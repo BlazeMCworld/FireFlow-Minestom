@@ -14,6 +14,7 @@ object Commands {
             PlayCommand,
             ReloadCommand,
             VariablesCommand,
+            InsetCommand
         )
         all.forEach(MinecraftServer.getCommandManager()::register)
     }
