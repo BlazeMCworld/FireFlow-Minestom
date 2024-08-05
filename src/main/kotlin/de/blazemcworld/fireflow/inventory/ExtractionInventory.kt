@@ -5,7 +5,6 @@ import de.blazemcworld.fireflow.node.ValueType
 import de.blazemcworld.fireflow.util.sendError
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.entity.Player
 import net.minestom.server.inventory.Inventory
@@ -28,7 +27,7 @@ object ExtractionInventory {
 
         player.openInventory(inv)
 
-        inv.addInventoryCondition { who, slot, type, result ->
+        inv.addInventoryCondition { who, slot, _, _ ->
             if (who !is Player) return@addInventoryCondition
             val extraction = extractions.getOrNull(slot) ?: return@addInventoryCondition
             callback(extraction)

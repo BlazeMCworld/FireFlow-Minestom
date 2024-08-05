@@ -1,6 +1,5 @@
 package de.blazemcworld.fireflow.node
 
-import de.blazemcworld.fireflow.gui.ExtractedNodeComponent
 import de.blazemcworld.fireflow.gui.IOComponent
 import de.blazemcworld.fireflow.gui.NodeComponent
 import net.kyori.adventure.text.Component
@@ -8,7 +7,6 @@ import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
-import net.minestom.server.network.NetworkBuffer
 
 abstract class Node(val title: String, val material: Material) {
     abstract fun menuItem(): ItemStack
