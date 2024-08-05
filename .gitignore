@@ -34,6 +34,8 @@ bin/
 
 ### VS Code ###
 .vscode/
+.idx/
+start.sh
 
 ### Mac OS ###
 .DS_Store
@@ -41,4 +43,3 @@ bin/
 ### FireFlow ###
 logs
 server
-.run

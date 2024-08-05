@@ -1,5 +1,4 @@
 plugins {
-    application
     kotlin("jvm") version "2.0.0"
     id("io.github.goooler.shadow") version "8.1.7"
 }
@@ -43,8 +42,4 @@ tasks.withType<Jar> {
     manifest {
         attributes["Main-Class"] = "de.blazemcworld.fireflow.FireFlowKt"
     }
-}
-application {
-    mainClass.set("de.blazemcworld.fireflow.FireFlowKt")
-    tasks.run.get().workingDir = File(rootProject.projectDir, ".run")
 }
