@@ -34,7 +34,7 @@ object ConnectNodesTool : Tool {
 
         private var highlighter: Tool.IOHighlighter? = Tool.IOHighlighter(NamedTextColor.AQUA, player, space)
 
-        override fun use() {
+        override fun use(callback: (Player, Boolean) -> Unit) {
             val cursor = space.codeCursor(player)
             for (node in space.codeNodes) {
                 for (output in node.outputs) {

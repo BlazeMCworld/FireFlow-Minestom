@@ -32,7 +32,7 @@ object MoveTool : Tool {
         var selectionIndicator = RectangleComponent()
         var selectionTask: Task? = null
 
-        override fun use() {
+        override fun use(callback: (Player, Boolean) -> Unit) {
             if (nodes.isNotEmpty() || connection != null) {
                 stopMoving()
                 return
@@ -152,6 +152,8 @@ object MoveTool : Tool {
         }
 
         override fun hasSelection() = nodes.isNotEmpty()
+
+        override fun startedSelection() = selectionStart != null
 
         private fun stopMoving() {
             nodes.forEach { (node, _) ->

@@ -178,6 +178,14 @@ class Space(val id: Int) {
 
         val playerTools = WeakHashMap<Player, Tool.Handler>()
 
+        fun swapCallback(player: Player, remove: Boolean) {
+            if (remove) {
+                playerTools[player]?.deselect()
+                playerTools[player] = null
+                playerHighlighters[player] = Tool.IOHighlighter(NamedTextColor.GRAY, player, this, ::changeColor) { it is IOComponent.Output || it is IOComponent.InsetInput<*> }.also { it.selected() }
+            }
+        }
+
         codeEvents.addListener(ItemDropEvent::class.java) {
             it.isCancelled = true
         }
@@ -200,7 +208,21 @@ class Space(val id: Int) {
             val player = event.entity as Player
             if (MousePreference.playerPreference[player] == 0.toByte()) return@addListener
 
-            if (playerTools[player] == null) DeleteTool.handler(player, this).use()
+            if (playerTools[player] == null) {
+                playerTools[player] = DeleteTool.handler(player, this).also { it.select() }
+                val tool = playerTools[player] ?: return@addListener
+                tool.use()
+                if (!tool.startedSelection()) {
+                    tool.deselect()
+                    playerTools[player] = null
+                    if (playerHighlighters[player] == null) playerHighlighters[player] = Tool.IOHighlighter(NamedTextColor.GRAY, player, this, ::changeColor) { it is IOComponent.Output || it is IOComponent.InsetInput<*> }.also { it.selected() }
+                } else {
+                    playerHighlighters[player]?.deselect()
+                    playerHighlighters[player] = null
+                }
+            } else if (playerTools[player]?.tool == DeleteTool) {
+                playerTools[player]?.use(::swapCallback)
+            }
             else {
                 playerTools[player]?.deselect()
                 playerTools[player] = null
@@ -264,14 +286,6 @@ class Space(val id: Int) {
                     }
                 }
             } else event.isCancelled = playerTools[event.player]?.chat(event.message) ?: false
-        }
-
-        fun swapCallback(player: Player, remove: Boolean) {
-            if (remove) {
-                playerTools[player]?.deselect()
-                playerTools[player] = null
-                playerHighlighters[player] = Tool.IOHighlighter(NamedTextColor.GRAY, player, this, ::changeColor) { it is IOComponent.Output || it is IOComponent.InsetInput<*> }.also { it.selected() }
-            }
         }
 
         codeEvents.addListener(PlayerSwapItemEvent::class.java) { event ->

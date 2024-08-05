@@ -2,6 +2,7 @@ package de.blazemcworld.fireflow.inventory
 
 import de.blazemcworld.fireflow.database.DatabaseHelper
 import de.blazemcworld.fireflow.preferences.AutoToolsPreference
+import de.blazemcworld.fireflow.preferences.DeleteWarningPreference
 import de.blazemcworld.fireflow.preferences.MousePreference
 import de.blazemcworld.fireflow.preferences.ReloadPreference
 import net.kyori.adventure.text.format.NamedTextColor
@@ -21,7 +22,8 @@ object PreferencesInventory {
     private val preferences = mapOf(
         "reload" to ReloadPreference,
         "auto-tools" to AutoToolsPreference,
-        "code-control" to MousePreference
+        "code-control" to MousePreference,
+        "delete-warning" to DeleteWarningPreference
     )
 
     fun open(player: Player) {

@@ -17,7 +17,7 @@ object CreateNodeTool : Tool {
     override fun handler(player: Player, space: Space) = object : Tool.Handler {
         override val tool = CreateNodeTool
 
-        override fun use() {
+        override fun use(callback: (Player, Boolean) -> Unit) {
             SelectionInventories.selectNode(player, space, NodeCategory.root) { node ->
                 space.codeNodes += node.newComponent().also {
                     it.pos = space.codeCursor(player)

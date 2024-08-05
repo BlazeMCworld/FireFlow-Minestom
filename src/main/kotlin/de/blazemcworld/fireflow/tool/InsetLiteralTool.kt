@@ -25,7 +25,7 @@ object InsetLiteralTool : Tool {
 
         var highlighter: Tool.IOHighlighter? = Tool.IOHighlighter(NamedTextColor.DARK_RED, player, space) { it is IOComponent.InsetInput<*> }
 
-        override fun use() {
+        override fun use(callback: (Player, Boolean) -> Unit) {
             val cursor = space.codeCursor(player)
             space.codeNodes.find { it.includes(cursor) }?.let {
                 for (input in it.inputs) {

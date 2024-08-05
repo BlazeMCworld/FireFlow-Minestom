@@ -34,10 +34,11 @@ interface Tool {
        val tool: Tool
        fun select() {}
        fun deselect() {}
-       fun use() {}
+       fun use(callback: (Player, Boolean) -> Unit = { _, _ ->}) {}
        fun swap(callback: (Player, Boolean) -> Unit = { _, _ ->}): Boolean { return false}
        fun chat(message: String): Boolean { return false }
        fun hasSelection() = false
+       fun startedSelection() = false
    }
 
     class IOHighlighter(val color: TextColor, val player: Player, val space: Space, val callback: (Player, IOComponent?) -> Unit = {_, _ ->}, val filter: (IOComponent) -> Boolean = {true}) {
