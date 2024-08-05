@@ -63,51 +63,43 @@ object ConnectNodesTool : Tool {
                     }
                 }
                 if (from == null) for (input in node.inputs) {
-                    for (conn in input.connections) {
-                        for ((index, pos) in conn.relays.withIndex()) {
-                            if (pos.distance(cursor) < 0.2) {
-                                from = conn.output
+                    for (conn in input.connections) for ((index, pos) in conn.relays.withIndex()) {
+                        if (pos.distance(cursor) < 0.2) {
+                            from = conn.output
+                            previewLine = LineComponent()
+                            previewLine.color = conn.output.io.type.color
+
+                            for (each in 0..index) {
+                                relays += conn.relays[each]
+                                previewLine.end = conn.relays[each]
+                                otherLines.add(previewLine)
                                 previewLine = LineComponent()
+                                previewLine.start = conn.relays[each]
                                 previewLine.color = conn.output.io.type.color
-
-                                for (each in 0..index) {
-                                    relays += conn.relays[each]
-                                    previewLine.end = conn.relays[each]
-                                    otherLines.add(previewLine)
-                                    previewLine = LineComponent()
-                                    previewLine.start = conn.relays[each]
-                                    previewLine.color = conn.output.io.type.color
-                                }
-
-                                previewTask?.cancel()
-                                previewTask = MinecraftServer.getSchedulerManager().submitTask {
-                                    if (otherLines.isEmpty()) {
-                                        previewLine.start = Pos2d(conn.output.pos.x, conn.output.pos.y + conn.output.text.height() * 0.75)
-                                    } else {
-                                        otherLines[0].start = Pos2d(conn.output.pos.x, conn.output.pos.y + conn.output.text.height() * 0.75)
-                                    }
-                                    previewLine.end = space.codeCursor(player)
-                                    previewLine.update(space.codeInstance)
-                                    return@submitTask TaskSchedule.tick(1)
-                                }
-                                return
                             }
+
+                            previewTask?.cancel()
+                            previewTask = MinecraftServer.getSchedulerManager().submitTask {
+                                if (otherLines.isEmpty()) {
+                                    previewLine.start = Pos2d(conn.output.pos.x, conn.output.pos.y + conn.output.text.height() * 0.75)
+                                } else {
+                                    otherLines[0].start = Pos2d(conn.output.pos.x, conn.output.pos.y + conn.output.text.height() * 0.75)
+                                }
+                                previewLine.end = space.codeCursor(player)
+                                previewLine.update(space.codeInstance)
+                                return@submitTask TaskSchedule.tick(1)
+                            }
+                            return
                         }
                     }
                 }
                 from?.let { output ->
-                    for (input in node.inputs) {
-                        if (input.includes(cursor)) {
-                            if (!input.connect(output, relays)) return
-
-                            if (input is IOComponent.InsetInput<*> && input.insetVal != null) {
-                                input.insetVal = null
-                            }
-
-                            input.node.update(space.codeInstance)
-                            clearSelectionPreview()
-                            return
-                        }
+                    for (input in node.inputs) if (input.includes(cursor)) {
+                        if (!input.connect(output, relays)) return
+                        if (input is IOComponent.InsetInput<*> && input.insetVal != null) input.insetVal = null
+                        input.node.update(space.codeInstance)
+                        clearSelectionPreview()
+                        return
                     }
                 }
             }

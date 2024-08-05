@@ -7,7 +7,13 @@ import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.attribute.Attribute
+import net.minestom.server.event.trait.PlayerInstanceEvent
 import net.minestom.server.instance.Instance
+
+class PlayerExitInstanceEvent(private val thePlayer: Player, private val theInstance: Instance) : PlayerInstanceEvent {
+    override fun getInstance() = theInstance
+    override fun getPlayer() = thePlayer
+}
 
 fun Player.reset() {
     gameMode = GameMode.ADVENTURE

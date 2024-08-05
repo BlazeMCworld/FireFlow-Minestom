@@ -45,7 +45,7 @@ object EqualNode : GenericNode("Equal", Material.RAW_IRON) {
         output("Case", ConditionType)
     }
 
-    class Impl<T>(private val type: ValueType<T>) : BaseNode(type.name + " Equal", type.material) {
+    class Impl<T : Any>(private val type: ValueType<T>) : BaseNode(type.name + " Equal", type.material) {
         private val left = input("Left", type)
         private val right = input("Right", type)
         private val condition = output("Case", ConditionType)

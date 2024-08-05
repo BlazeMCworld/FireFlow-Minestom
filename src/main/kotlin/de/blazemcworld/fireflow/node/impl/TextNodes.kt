@@ -48,7 +48,7 @@ object ToTextNode : GenericNode("To Text", Material.STRING) {
         output("Output", TextType)
     }
 
-    class Impl<T>(val type: ValueType<T>) : BaseNode("To Text", type.material) {
+    class Impl<T : Any>(val type: ValueType<T>) : BaseNode("To Text", type.material) {
         private val input = input("Input", type)
         private val output = output("Output", TextType)
         override val generics = mapOf("Type" to type)

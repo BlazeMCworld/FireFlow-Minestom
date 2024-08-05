@@ -46,7 +46,7 @@ object ForEachNode : GenericNode("For Each", Material.GREEN_WOOL) {
     private val cache = WeakHashMap<ValueType<*>, Impl<*>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*> = cache.computeIfAbsent(generics["Type"]) { Impl(generics["Type"]!!) }
 
-    class Impl<T>(private val type: ValueType<T>) : BaseNode("For Each ${type.name}", type.material) {
+    class Impl<T : Any>(private val type: ValueType<T>) : BaseNode("For Each ${type.name}", type.material) {
         private val signal = input("Signal", SignalType)
         private val list = input("List", ListType.create(type))
         private val forEach = output("For Each", SignalType)

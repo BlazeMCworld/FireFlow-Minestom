@@ -37,7 +37,7 @@ object MySpacesInventory {
             }
         }
 
-        inv.addInventoryCondition click@{ who, slot, type, result ->
+        inv.addInventoryCondition click@{ who, slot, _, _ ->
             if (player != who) return@click
             val id = spaceIds.getOrNull(slot) ?: return@click
             player.closeInventory()
@@ -46,7 +46,7 @@ object MySpacesInventory {
 
         if (spaceIds.size < Config.store.limits.spacesPerPlayer) {
             inv.setItemStack(8, NEW_SPACE_ITEM)
-            inv.addInventoryCondition click@{ who, slot, type, result ->
+            inv.addInventoryCondition click@{ who, slot, _, _ ->
                 if (player != who || slot != 8) return@click
                 SpaceManager.createSpace(player) ?: return@click
                 open(player)

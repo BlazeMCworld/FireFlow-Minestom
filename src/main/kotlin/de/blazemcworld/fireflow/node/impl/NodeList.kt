@@ -80,6 +80,7 @@ object NodeList {
         SendMessageNode,
         SetBlockNode,
         SetGameModeNode,
+        ClearPlayerEffects,
         SetPlayerCanFlyNode,
         SetPlayerExpLevel,
         SetPlayerFireTicks,

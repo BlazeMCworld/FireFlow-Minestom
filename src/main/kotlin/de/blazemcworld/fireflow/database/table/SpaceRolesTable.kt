@@ -23,12 +23,8 @@ object SpaceRolesTable : IntIdTable("space_roles") {
             fun byId(id: Int) = id2roleMap[id] ?: UNKNOWN
 
             init {
-                for (role in entries) {
-                    Role.id2roleMap[role.id] = role
-                }
+                for (role in entries) Role.id2roleMap[role.id] = role
             }
         }
-
     }
-
 }

@@ -18,7 +18,7 @@ class FunctionCallNode(private val fnInputs: FunctionInputsNode, private val fnO
     override fun setup(ctx: NodeContext) {
         for (input in inputs) {
             ctx[input].signalListener = listen@{
-                val matching = fnInputs.outputs.find { it.name == input.name } as Output<Unit>? ?: return@listen
+                val matching = fnInputs.outputs.find(input.name::equals) as Output<Unit>? ?: return@listen
                 val otherCtx = ctx.global.nodeContexts[fnInputs.component] ?: return@listen
 
                 it.functionStack.add(ctx.component)
@@ -32,7 +32,7 @@ class FunctionCallNode(private val fnInputs: FunctionInputsNode, private val fnO
         for (output in outputs) {
             val matching = fnOutputs.inputs.find { it.name == output.name } ?: continue
             val otherCtx = ctx.global.nodeContexts[fnOutputs.component] ?: continue
-            ctx[output as Output<Any?>].defaultHandler = {
+            ctx[output as Output<Any>].defaultHandler = {
                 it.functionStack.add(ctx.component)
                 try {
                     it[otherCtx[matching]]
@@ -65,7 +65,7 @@ class FunctionInputsNode(val fn: String) : BaseNode("$fn Inputs", Material.PRISM
 
     override fun setup(ctx: NodeContext) {
         for (output in outputs) {
-            ctx[output as Output<Any?>].defaultHandler = listen@{
+            ctx[output as Output<Any>].defaultHandler = listen@{
                 val matching = it.functionStack.peek().node.inputs.find { i -> i.name == output.name } ?: return@listen null
                 val matchingCtx = ctx.global.nodeContexts[it.functionStack.peek()] ?: return@listen null
                 return@listen it[matchingCtx[matching]]
@@ -95,7 +95,7 @@ class FunctionOutputsNode(val fn: String) : BaseNode("$fn Outputs", Material.PRI
 
     override fun setup(ctx: NodeContext) {
         for (input in inputs) {
-            ctx[input as Input<Any?>].signalListener = listen@{
+            ctx[input as Input<Any>].signalListener = listen@{
                 val matching = it.functionStack.peek().node.outputs.find { o -> o.name == input.name } as Output<Unit>? ?: return@listen
                 val matchingCtx = ctx.global.nodeContexts[it.functionStack.peek()] ?: return@listen
                 it.emit(matchingCtx[matching])

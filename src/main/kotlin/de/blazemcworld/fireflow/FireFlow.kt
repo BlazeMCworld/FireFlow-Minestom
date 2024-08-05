@@ -26,6 +26,7 @@ fun main() {
     DatabaseHelper.init()
 
     val srv = MinecraftServer.init()!!
+    MinecraftServer.setBrandName("FireFlow")
     MojangAuth.init()
 
     Lobby

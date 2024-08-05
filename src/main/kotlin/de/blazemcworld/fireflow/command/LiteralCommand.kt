@@ -21,11 +21,13 @@ object LiteralCommand : Command("literal") {
             }
 
             val cursor = space.codeCursor(sender)
-            space.codeNodes.find { it.node is ValueLiteralNode<*> && it.includes(cursor) }?.let {
-                it.valueLiteral = ctx.get("value")
-                it.update(space.codeInstance)
-                if ((it.node as ValueLiteralNode<*>).type.parse(it.valueLiteral, space) == null) {
-                    sender.sendError("Value seems invalid!")
+            space.codeNodes.find { it.node is ValueLiteralNode<*> && it.includes(cursor) }?.let { n ->
+                ctx.get<String>("value")?.let {
+                    if ((n.node as ValueLiteralNode<*>).type.parse(it, space) == null) sender.sendError("Value seems invalid!")
+                    else {
+                        n.valueLiteral = it
+                        n.update(space.codeInstance)
+                    }
                 }
                 return@exec
             }

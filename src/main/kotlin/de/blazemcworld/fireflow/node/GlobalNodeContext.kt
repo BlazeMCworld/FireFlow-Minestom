@@ -14,18 +14,15 @@ import net.minestom.server.timer.TaskSchedule
 class GlobalNodeContext(val space: Space) {
     val onDestroy = mutableSetOf<() -> Unit>()
     val nodeContexts = mutableMapOf<NodeComponent, NodeContext>()
-    val varStore = mutableMapOf<String, Any?>()
+    val varStore = mutableMapOf<String, Any>()
     private var cpuTime = 0L
     private var cpuDepth = 0
     private var cpuStart = System.nanoTime()
     private var halted = false
 
     init {
-        for (component in space.codeNodes) {
-            nodeContexts[component] = NodeContext(this, component)
-        }
+        for (component in space.codeNodes) nodeContexts[component] = NodeContext(this, component)
         for (ctx in nodeContexts.values) ctx.computeConnections()
-
         for (component in space.codeNodes) {
             try {
                 component.node.setup(nodeContexts[component]!!)
@@ -39,23 +36,14 @@ class GlobalNodeContext(val space: Space) {
             cpuTime = 0
             return@submitTask TaskSchedule.tick(1)
         }
-        onDestroy += {
-            resetCpu.cancel()
-        }
+        onDestroy += { resetCpu.cancel() }
     }
 
     fun measureCode(code: () -> Unit) {
-        if (cpuDepth == 0) {
-            cpuStart = System.nanoTime()
-        }
-        if (cpuLimit()) {
-            halt()
-            return
-        }
+        if (cpuDepth == 0) cpuStart = System.nanoTime()
+        if (cpuLimit()) return halt()
         cpuDepth++
-        try {
-            code()
-        } finally {
+        try { code() } finally {
             cpuDepth--
             if (cpuDepth == 0) {
                 cpuTime += System.nanoTime() - cpuStart

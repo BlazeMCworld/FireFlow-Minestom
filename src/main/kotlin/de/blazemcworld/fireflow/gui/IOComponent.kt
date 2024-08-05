@@ -1,7 +1,5 @@
 package de.blazemcworld.fireflow.gui
 
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
 import de.blazemcworld.fireflow.node.BaseNode
 import de.blazemcworld.fireflow.node.SignalType
 import de.blazemcworld.fireflow.node.ValueType
@@ -72,8 +70,6 @@ abstract class IOComponent(val node: NodeComponent) {
             connections.clear()
         }
 
-        val lines = mutableListOf<LineComponent>()
-        val lineOutputMap = mutableMapOf<LineComponent, Output>()
         override fun update(inst: Instance) {
             updateText()
 
@@ -84,21 +80,11 @@ abstract class IOComponent(val node: NodeComponent) {
         }
     }
 
-    class InsetInput<T>(val input : BaseNode.Input<T>, node: NodeComponent, var insetVal: T? = input.default, val type: ValueType<T> = input.type) : Input(input, node) {
-        fun stringify(): String {
-            return type.stringify(insetVal ?: return "unset")
-        }
+    class InsetInput<T : Any>(val input : BaseNode.Input<T>, node: NodeComponent, var insetVal: T? = input.default, val type: ValueType<T> = input.type) : Input(input, node) {
+        fun stringify() = insetVal?.let { type.stringify(it) } ?: "unset"
 
         fun updateInset(string: String, space: Space) {
             insetVal = type.parse(string, space)
-        }
-
-        fun searlize(): JsonElement {
-            return type.serialize(insetVal ?: return JsonObject(), mutableMapOf())
-        }
-
-        fun deserialize(json: JsonElement, space: Space) {
-            insetVal = type.deserialize(json, space, mutableMapOf())
         }
     }
 
@@ -111,13 +97,7 @@ abstract class IOComponent(val node: NodeComponent) {
         fun connect(input: Input, relays: List<Pos2d>) = input.connect(this, relays)
 
         override fun disconnectAll() {
-            for (input in connections) {
-                input.connections.removeIf {
-                    if (it.output != this) return@removeIf false
-                    it.remove()
-                    true
-                }
-            }
+            for (input in connections) input.connections.removeIf { (it.output != this).apply { if (this) it.remove() } }
             connections.clear()
         }
 
@@ -126,5 +106,4 @@ abstract class IOComponent(val node: NodeComponent) {
             super.update(inst)
         }
     }
-
 }

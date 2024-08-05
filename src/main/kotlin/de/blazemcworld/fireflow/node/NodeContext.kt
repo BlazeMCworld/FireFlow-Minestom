@@ -8,9 +8,8 @@ class NodeContext(val global: GlobalNodeContext, val component: NodeComponent) {
 
     private val store = HashMap<BaseNode.IO<*>, Bound<*>>()
 
-    operator fun <T> get(v: BaseNode.Output<T>) = store[v] as BoundOutput<T>
-
-    operator fun <T> get(v: BaseNode.Input<T>) = store[v] as BoundInput<T>
+    operator fun <T : Any> get(v: BaseNode.Output<T>) = store[v] as BoundOutput<T>
+    operator fun <T : Any> get(v: BaseNode.Input<T>) = store[v] as BoundInput<T>
 
     init {
         if (component is ExtractedNodeComponent) {
@@ -37,7 +36,7 @@ class NodeContext(val global: GlobalNodeContext, val component: NodeComponent) {
         fun nodeContext() = this@NodeContext
     }
 
-    open inner class BoundOutput<T>(v: BaseNode.Output<T>) : Bound<BaseNode.Output<T>>(v) {
+    open inner class BoundOutput<T : Any>(v: BaseNode.Output<T>) : Bound<BaseNode.Output<T>>(v) {
         lateinit var connected: Set<BoundInput<*>>
         open var defaultHandler: (EvaluationContext) -> T? = { null }
 
@@ -46,7 +45,7 @@ class NodeContext(val global: GlobalNodeContext, val component: NodeComponent) {
         }
     }
 
-    inner class ExtractedOutput<I, O>(inp: BaseNode.Input<I>, v: BaseNode.Output<O>) : BoundOutput<O>(v) {
+    inner class ExtractedOutput<I : Any, O : Any>(inp: BaseNode.Input<I>, v: BaseNode.Output<O>) : BoundOutput<O>(v) {
         override var defaultHandler: (EvaluationContext) -> O? = {
             val extraction: TypeExtraction<I, O>? = (component as? ExtractedNodeComponent)?.extraction as? TypeExtraction<I, O>?
             val value = it[get(inp)]
@@ -54,7 +53,7 @@ class NodeContext(val global: GlobalNodeContext, val component: NodeComponent) {
         }
     }
 
-    open inner class BoundInput<T>(v: BaseNode.Input<T>) : Bound<BaseNode.Input<T>>(v) {
+    open inner class BoundInput<T : Any>(v: BaseNode.Input<T>) : Bound<BaseNode.Input<T>>(v) {
         var signalListener: (EvaluationContext) -> Unit = {}
 
         open lateinit var connected: Set<BoundOutput<*>>
@@ -63,9 +62,8 @@ class NodeContext(val global: GlobalNodeContext, val component: NodeComponent) {
         }
     }
 
-    inner class BoundInsetInput<T>(insetValInp: IOComponent.InsetInput<T>) : BoundInput<T>(insetValInp.io as BaseNode.Input<T>) {
+    inner class BoundInsetInput<T : Any>(insetValInp: IOComponent.InsetInput<T>) : BoundInput<T>(insetValInp.io as BaseNode.Input<T>) {
         var insetVal: T? = insetValInp.insetVal
         override var connected = emptySet<BoundOutput<*>>()
     }
-
 }

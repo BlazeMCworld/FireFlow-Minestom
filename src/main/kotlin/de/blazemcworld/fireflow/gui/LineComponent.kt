@@ -32,7 +32,7 @@ class LineComponent {
         val dist = start.distance(end)
         meta.scale = Vec(dist * 8, 1.0, 1.0)
         val angle = atan2(end.y - start.y, start.x - end.x).toFloat()
-        meta.leftRotation = listOf(0f, 0f, sin(angle / 2), cos(angle / 2)).toFloatArray()
+        meta.leftRotation = floatArrayOf(0f, 0f, sin(angle / 2), cos(angle / 2))
         val v = ((start + end) * 0.5) + Pos2d(
             cos(angle) * dist * 0.1 - sin(angle) * 0.1625,
             -sin(angle) * dist * 0.1 - cos(angle) * 0.1625

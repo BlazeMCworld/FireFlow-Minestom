@@ -1,6 +1,8 @@
+@file:Suppress("UnstableApiUsage")
+
 package de.blazemcworld.fireflow.node
 
-import com.google.gson.*
+import de.blazemcworld.fireflow.Config
 import de.blazemcworld.fireflow.space.Space
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -8,15 +10,45 @@ import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver
 import net.kyori.adventure.text.minimessage.tag.standard.StandardTags
+import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.attribute.Attribute
 import net.minestom.server.item.Material
+import net.minestom.server.network.NetworkBuffer
 import java.util.*
 import kotlin.collections.HashMap
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+fun writeType(buffer: NetworkBuffer, t: ValueType<*>): Unit = buffer.run {
+    t.generic?.let {
+        write(NetworkBuffer.STRING, it.name)
+        write(NetworkBuffer.BOOLEAN, true)
+        write(NetworkBuffer.VAR_INT, t.generics.size)
+        for ((k, v) in t.generics) {
+            write(NetworkBuffer.STRING, k)
+            writeType(buffer, v)
+        }
+    } ?: run {
+        write(NetworkBuffer.STRING, t.name)
+        write(NetworkBuffer.BOOLEAN, false)
+    }
+}
+
+fun readType(buffer: NetworkBuffer): ValueType<*>? = buffer.run {
+    val name = read(NetworkBuffer.STRING)
+    val isGeneric = read(NetworkBuffer.BOOLEAN)
+    if (!isGeneric) AllTypes.all.find { it is ValueType<*> && it.name == name } as ValueType<*>?
+    else {
+        val genericType = AllTypes.all.find { it is GenericType && name == it.name } as GenericType
+        val genericsSize = read(NetworkBuffer.VAR_INT)
+        genericType.create(LinkedHashMap<String, ValueType<*>>(genericsSize).apply { repeat(genericsSize) {
+            this[read(NetworkBuffer.STRING)] = readType(buffer) ?: return@run null
+        } })
+    }
+}
 
 object AllTypes {
     val dataOnly = mutableListOf<SomeType>()
@@ -45,25 +77,32 @@ interface SomeType {
 
 interface GenericType : SomeType {
     fun create(generics: MutableMap<String, ValueType<*>>): ValueType<*>
-
     val generics: Map<String, List<SomeType>>
 }
 
-abstract class ValueType<T> : SomeType  {
+abstract class ValueType<T : Any> : SomeType, NetworkBuffer.Type<T>  {
     abstract fun parse(str: String, space: Space): T?
-    abstract fun compareEqual(left: T?, right: T?): Boolean
+    abstract fun compareEqual(left: Any?, right: Any?): Boolean
     abstract fun validate(something: Any?): T?
     open val generics = emptyMap<String, ValueType<*>>()
     open val generic: GenericType? = null
     open val extractions: MutableList<TypeExtraction<T, *>> = mutableListOf()
     open val insetable = false
 
-    abstract fun serialize(v: T, objects: MutableMap<Any?, Pair<Int, JsonElement>>): JsonElement
-    abstract fun deserialize(json: JsonElement, space: Space, objects: MutableMap<Int, Pair<Any?, JsonElement>>): T
-    abstract fun stringify(v: T): String
+    abstract fun stringify(v: T?): String
 }
 
-class TypeExtraction<I, O>(val icon: Material, val name: String, val inputType: ValueType<I>, private val outputType: ValueType<O>, val extractor: (I) -> O) {
+class PlayerReference(val uuid: UUID) {
+    lateinit var space: Space
+    constructor(p: Player, s: Space) : this(p.uuid) {
+        space = s
+    }
+
+    fun resolve() = space.playInstance.getPlayerByUuid(uuid)
+    fun withSpace(s: Space) = this.apply { space = s }
+}
+
+class TypeExtraction<I : Any, O : Any>(val icon: Material, val name: String, inputType: ValueType<I>, private val outputType: ValueType<O>, val extractor: (I) -> O) {
     val input: BaseNode.Input<I> = BaseNode.Input("", inputType)
     val output: BaseNode.Output<O> = BaseNode.Output(name, outputType)
     val formalName = "${inputType.name}-${name}"
@@ -79,11 +118,11 @@ class TypeExtraction<I, O>(val icon: Material, val name: String, val inputType: 
     }
 
     fun extract(input: I) = outputType.validate(extractor(input))
-    fun asInput(i: Any) = i as? I
 }
 
 object PlayerType : ValueType<PlayerReference>() {
     override val name = "Player"
+
     override val color: TextColor = NamedTextColor.GOLD
     override val material: Material = Material.PLAYER_HEAD
     override val extractions: MutableList<TypeExtraction<PlayerReference, *>> = mutableListOf(
@@ -122,23 +161,16 @@ object PlayerType : ValueType<PlayerReference>() {
         TypeExtraction(Material.COMMAND_BLOCK_MINECART, "Can Fly", this, ConditionType) { it.resolve()?.isAllowFlying ?: false },
     )
 
-    override fun parse(str: String, space: Space) = kotlin.runCatching { PlayerReference(UUID.fromString(str), space) }.getOrNull()
-    override fun compareEqual(left: PlayerReference?, right: PlayerReference?) = left is PlayerReference && right is PlayerReference && left.uuid == right.uuid
+    override fun parse(str: String, space: Space) = kotlin.runCatching { PlayerReference(UUID.fromString(str)).withSpace(space) }.getOrNull()
+    override fun compareEqual(left: Any?, right: Any?) = left is PlayerReference && right is PlayerReference && left.uuid == right.uuid
     override fun validate(something: Any?) = if (something is PlayerReference) something else null
-    override fun deserialize(
-        json: JsonElement,
-        space: Space,
-        objects: MutableMap<Int, Pair<Any?, JsonElement>>
-    ): PlayerReference = PlayerReference(UUID.fromString(json.asString), space)
 
-    override fun serialize(v: PlayerReference, objects: MutableMap<Any?, Pair<Int, JsonElement>>) = JsonPrimitive(v.uuid.toString())
+    override fun write(buffer: NetworkBuffer, value: PlayerReference) = buffer.write(NetworkBuffer.UUID, value.uuid)
+    override fun read(buffer: NetworkBuffer) = PlayerReference(buffer.read(NetworkBuffer.UUID))
 
-    override fun stringify(v: PlayerReference) = v.resolve()?.username ?: ("Offline Player (" + v.uuid + ")")
-}
-class PlayerReference(val uuid: UUID, private val space: Space) {
-    constructor(player: Player, space: Space) : this(player.uuid, space)
-
-    fun resolve() = space.playInstance.getPlayerByUuid(uuid)
+    override fun stringify(v: PlayerReference?) = v?.run {
+        MinecraftServer.getConnectionManager().getOnlinePlayerByUuid(uuid)?.username ?: "Offline Player ($uuid)"
+    } ?: "Unknown Player"
 }
 
 object SignalType : ValueType<Unit>() {
@@ -147,12 +179,13 @@ object SignalType : ValueType<Unit>() {
     override val material: Material = Material.LIGHT_BLUE_DYE
 
     override fun parse(str: String, space: Space) = null
-    override fun compareEqual(left: Unit?, right: Unit?) = false
+    override fun compareEqual(left: Any?, right: Any?) = false
     override fun validate(something: Any?) = null
-    override fun deserialize(json: JsonElement, space: Space, objects: MutableMap<Int, Pair<Any?, JsonElement>>): Unit = Unit
-    override fun serialize(v: Unit, objects: MutableMap<Any?, Pair<Int, JsonElement>>): JsonNull = JsonNull.INSTANCE
 
-    override fun stringify(v: Unit) = "Signal"
+    override fun write(buffer: NetworkBuffer, value: Unit) {}
+    override fun read(buffer: NetworkBuffer) {}
+
+    override fun stringify(v: Unit?) = "Signal"
 }
 
 object NumberType : ValueType<Double>() {
@@ -182,17 +215,13 @@ object NumberType : ValueType<Double>() {
     )
 
     override fun parse(str: String, space: Space) = str.toDoubleOrNull()
-    override fun compareEqual(left: Double?, right: Double?) = left == right
+    override fun compareEqual(left: Any?, right: Any?) = left is Double && right is Double && left == right
     override fun validate(something: Any?) = if (something is Double) something else null
-    override fun deserialize(
-        json: JsonElement,
-        space: Space,
-        objects: MutableMap<Int, Pair<Any?, JsonElement>>
-    ): Double = json.asDouble
 
-    override fun serialize(v: Double, objects: MutableMap<Any?, Pair<Int, JsonElement>>) = JsonPrimitive(v)
+    override fun write(buffer: NetworkBuffer, value: Double) = buffer.write(NetworkBuffer.DOUBLE, value)
+    override fun read(buffer: NetworkBuffer) = buffer.read(NetworkBuffer.DOUBLE)
 
-    override fun stringify(v: Double) = v.toString()
+    override fun stringify(v: Double?) = (v ?: 0.0).toString()
 }
 
 
@@ -207,16 +236,13 @@ object ConditionType : ValueType<Boolean>() {
     )
 
     override fun parse(str: String, space: Space) = str == "true"
-    override fun compareEqual(left: Boolean?, right: Boolean?) = left == right
+    override fun compareEqual(left: Any?, right: Any?) = left is Boolean && right is Boolean && left == right
     override fun validate(something: Any?) = if (something is Boolean) something else null
-    override fun deserialize(
-        json: JsonElement,
-        space: Space,
-        objects: MutableMap<Int, Pair<Any?, JsonElement>>
-    ): Boolean = json.asBoolean
 
-    override fun serialize(v: Boolean, objects: MutableMap<Any?, Pair<Int, JsonElement>>) = JsonPrimitive(v)
-    override fun stringify(v: Boolean) = v.toString()
+    override fun write(buffer: NetworkBuffer, value: Boolean) = buffer.write(NetworkBuffer.BOOLEAN, value)
+    override fun read(buffer: NetworkBuffer) = buffer.read(NetworkBuffer.BOOLEAN)
+
+    override fun stringify(v: Boolean?) = (v ?: false).toString()
 }
 
 object TextType : ValueType<String>() {
@@ -234,16 +260,13 @@ object TextType : ValueType<String>() {
     )
 
     override fun parse(str: String, space: Space) = str
-    override fun compareEqual(left: String?, right: String?) = left == right
+    override fun compareEqual(left: Any?, right: Any?) = left is String && right is String && left == right
     override fun validate(something: Any?) = if (something is String) something else null
-    override fun deserialize(
-        json: JsonElement,
-        space: Space,
-        objects: MutableMap<Int, Pair<Any?, JsonElement>>
-    ): String = json.asString
-    override fun serialize(v: String, objects: MutableMap<Any?, Pair<Int, JsonElement>>) = JsonPrimitive(v)
 
-    override fun stringify(v: String) = v
+    override fun write(buffer: NetworkBuffer, value: String) = buffer.write(NetworkBuffer.STRING, value)
+    override fun read(buffer: NetworkBuffer) = buffer.read(NetworkBuffer.STRING)
+
+    override fun stringify(v: String?) = v ?: ""
 }
 
 private val mm = MiniMessage.builder()
@@ -275,16 +298,13 @@ object MessageType : ValueType<Component>() {
     )
 
     override fun parse(str: String, space: Space) = mm.deserialize(str)
-    override fun compareEqual(left: Component?, right: Component?) = left is Component && right is Component && mm.serialize(left) == mm.serialize(right)
+    override fun compareEqual(left: Any?, right: Any?) = left is Component && right is Component && mm.serialize(left) == mm.serialize(right)
     override fun validate(something: Any?) = if (something is Component) something else null
-    override fun deserialize(
-        json: JsonElement,
-        space: Space,
-        objects: MutableMap<Int, Pair<Any?, JsonElement>>
-    ): Component = mm.deserialize(json.asString)
-    override fun serialize(v: Component, objects: MutableMap<Any?, Pair<Int, JsonElement>>) = JsonPrimitive(mm.serialize(v))
 
-    override fun stringify(v: Component) = mm.serialize(v)
+    override fun write(buffer: NetworkBuffer, value: Component) = buffer.write(NetworkBuffer.STRING, mm.serialize(value))
+    override fun read(buffer: NetworkBuffer) = mm.deserialize(buffer.read(NetworkBuffer.STRING))
+
+    override fun stringify(v: Component?) = v?.let { mm.serialize(it) } ?: ""
 }
 
 object PositionType : ValueType<Pos>() {
@@ -306,139 +326,88 @@ object PositionType : ValueType<Pos>() {
     )
 
     override fun parse(str: String, space: Space) = null
-    override fun compareEqual(left: Pos?, right: Pos?) = left is Pos && right is Pos
-            && left.x == right.x && left.y == right.y && left.z == right.z && left.yaw == right.yaw && left.pitch == right.pitch
+    override fun compareEqual(left: Any?, right: Any?) = left is Pos && right is Pos && left == right
     override fun validate(something: Any?) = if (something is Pos) something else null
-    override fun deserialize(json: JsonElement, space: Space, objects: MutableMap<Int, Pair<Any?, JsonElement>>): Pos {
-        return Pos(
-            json.asJsonObject.get("x").asDouble,
-            json.asJsonObject.get("y").asDouble,
-            json.asJsonObject.get("z").asDouble,
-            json.asJsonObject.get("yaw").asFloat,
-            json.asJsonObject.get("pitch").asFloat
-        )
-    }
 
-    override fun stringify(v: Pos) = "Pos(${shorten(v.x)}, ${shorten(v.y)}, ${shorten(v.z)}, ${shorten(v.pitch)}, ${shorten(v.yaw)})"
+    override fun write(buffer: NetworkBuffer, value: Pos) = buffer.run { value.run {
+        write(NetworkBuffer.DOUBLE, x)
+        write(NetworkBuffer.DOUBLE, y)
+        write(NetworkBuffer.DOUBLE, z)
+        write(NetworkBuffer.FLOAT, pitch)
+        write(NetworkBuffer.FLOAT, yaw)
+    } }
+
+    override fun read(buffer: NetworkBuffer) = buffer.run { Pos(
+        read(NetworkBuffer.DOUBLE), read(NetworkBuffer.DOUBLE), read(NetworkBuffer.DOUBLE),
+        read(NetworkBuffer.FLOAT), read(NetworkBuffer.FLOAT),
+    ) }
+
+    override fun stringify(v: Pos?) = (v ?: Pos.ZERO).run { arrayOf(
+        shorten(x), shorten(y), shorten(z), shorten(pitch), shorten(yaw)
+    ) }.joinToString(prefix="Pos(", postfix=")")
 
     private fun shorten(pos: Number) = (pos.toDouble() * 1000.0).roundToInt() / 1000.0
-
-    override fun serialize(v: Pos, objects: MutableMap<Any?, Pair<Int, JsonElement>>): JsonElement {
-        val obj = JsonObject()
-        obj.addProperty("x", v.x)
-        obj.addProperty("y", v.y)
-        obj.addProperty("z", v.z)
-        obj.addProperty("yaw", v.yaw)
-        obj.addProperty("pitch", v.pitch)
-        return obj
-    }
 }
 
 object ListType : GenericType {
     private val cache = WeakHashMap<ValueType<*>, Impl<*>>()
     override fun create(generics: MutableMap<String, ValueType<*>>): Impl<*> = create(generics["Type"]!!)
-    fun <T> create(type: ValueType<T>): Impl<T> = cache.computeIfAbsent(type) { Impl(type) } as Impl<T>
+    fun <T : Any> create(type: ValueType<T>): Impl<T> = cache.computeIfAbsent(type) { Impl(type) } as Impl<T>
 
     override val generics = mapOf("Type" to AllTypes.dataOnly)
     override val name: String = "List"
     override val material: Material = Material.STRING
     override val color: TextColor = NamedTextColor.WHITE
 
-    class Impl<T>(val type: ValueType<T>) : ValueType<ListReference<T>>() {
-        override val generics = mapOf("Type" to type)
-        override val generic = ListType
-
-        override fun deserialize(json: JsonElement, space: Space, objects: MutableMap<Int, Pair<Any?, JsonElement>>): ListReference<T> {
-            val id = json.asInt
-            objects[id]?.first?.let { return it as ListReference<T> }
-            val jsonInfo = objects[id]!!.second
-            val out = mutableListOf<T>()
-            for (each in jsonInfo.asJsonArray) {
-                out.add(type.deserialize(each, space, objects))
-            }
-            val res = ListReference(type, out)
-            objects[id] = res to jsonInfo
-            return res
-        }
-
-        override fun serialize(v: ListReference<T>, objects: MutableMap<Any?, Pair<Int, JsonElement>>): JsonElement {
-            if (objects.containsKey(this)) return JsonPrimitive(objects[this]!!.first)
-            val json = JsonArray()
-            val id = objects.size
-            objects[this] = id to json
-            for (each in v.store) {
-                json.add(type.serialize(each, objects))
-            }
-            return JsonPrimitive(id)
-        }
-
-        override fun stringify(v: ListReference<T>) = "List(${v.store.size} Entries)"
-
+    class Impl<T : Any>(val type: ValueType<T>) : ValueType<ListReference<T>>() {
         override val name: String = "List(${type.name})"
         override val color: TextColor = type.color
         override val material: Material = type.material
 
         override fun parse(str: String, space: Space) = null
+        override fun compareEqual(left: Any?, right: Any?) = left is ListReference<*> && right is ListReference<*> && left.store == right.store
         override fun validate(something: Any?) = if (something is ListReference<*> && something.type == type) something as ListReference<T> else null
 
-        override fun compareEqual(left: ListReference<T>?, right: ListReference<T>?) = left != null && right != null && left.store == right.store
+        override val generics = mapOf("Type" to type)
+        override val generic = ListType
+
+        override fun write(buffer: NetworkBuffer, value: ListReference<T>) = buffer.writeCollection(type, value.store)
+        override fun read(buffer: NetworkBuffer) = ListReference(type, buffer.readCollection(type, Config.store.limits.maxListSize))
+
+        override fun stringify(v: ListReference<T>?) = "List(${v?.store?.size ?: 0} Entries)"
     }
 }
-class ListReference<T>(val type: ValueType<T>, val store: MutableList<T>)
+class ListReference<T : Any>(val type: ValueType<T>, val store: MutableList<T>)
 
+data class DictionaryReference<K : Any, V : Any>(val key: ValueType<K>, val value: ValueType<V>, val store: MutableMap<K, V>)
 object DictionaryType : GenericType {
     private val cache = WeakHashMap<ValueType<*>, WeakHashMap<ValueType<*>, Impl<*, *>>>()
     override fun create(generics: MutableMap<String, ValueType<*>>): Impl<*, *> = create(generics["Key"]!!, generics["Value"]!!)
-    fun <K, V> create(key: ValueType<K>, value: ValueType<V>): Impl<K, V> = cache.computeIfAbsent(key) { WeakHashMap() }.computeIfAbsent(value) { Impl(key, value) } as Impl<K, V>
+    fun <K : Any, V : Any> create(key: ValueType<K>, value: ValueType<V>): Impl<K, V> = cache.computeIfAbsent(key) { WeakHashMap() }.computeIfAbsent(value) { Impl(key, value) } as Impl<K, V>
 
     override val generics = mapOf("Key" to AllTypes.dataOnly, "Value" to AllTypes.dataOnly)
     override val name: String = "Dictionary"
     override val material: Material = Material.COBWEB
     override val color: TextColor = NamedTextColor.WHITE
 
-    class Impl<K, V>(private val key: ValueType<K>, private val value: ValueType<V>) : ValueType<DictionaryReference<K, V>>() {
-        override val generics = mapOf("Key" to key, "Value" to value)
-        override val generic = DictionaryType
-
-        override fun deserialize(json: JsonElement, space: Space, objects: MutableMap<Int, Pair<Any?, JsonElement>>): DictionaryReference<K, V> {
-            val id = json.asInt
-            objects[id]?.first?.let { return it as DictionaryReference<K, V> }
-            val jsonInfo = objects[id]!!.second
-            val out = mutableMapOf<K, V>()
-            for (i in 0..jsonInfo.asJsonArray.size() step 2) {
-                out[key.deserialize(jsonInfo.asJsonArray[i], space, objects)] = value.deserialize(json.asJsonArray[i + 1], space, objects)
-            }
-            val res = DictionaryReference(key, value, out)
-            objects[id] = res to jsonInfo
-            return res
-        }
-
-        override fun serialize(v: DictionaryReference<K, V>, objects: MutableMap<Any?, Pair<Int, JsonElement>>): JsonElement {
-            if (objects.containsKey(this)) return JsonPrimitive(objects[this]!!.first)
-            val json = JsonArray()
-            val id = objects.size
-            objects[this] = id to json
-            for (each in v.store) {
-                json.add(key.serialize(each.key, objects))
-                json.add(value.serialize(each.value, objects))
-            }
-            return JsonPrimitive(id)
-        }
-
-        override fun stringify(v: DictionaryReference<K, V>) = "Dictionary(${v.store.size} Entries)"
-
-        override val name: String = "Dictionary(${key.name}, ${value.name})"
-        override val color: TextColor = key.color
-        override val material: Material = key.material
+    class Impl<K : Any, V : Any>(private val k: ValueType<K>, private val v: ValueType<V>) : ValueType<DictionaryReference<K, V>>() {
+        override val name: String = "Dictionary(${k.name}, ${v.name})"
+        override val color: TextColor = k.color
+        override val material: Material = k.material
 
         override fun parse(str: String, space: Space) = null
-        override fun validate(something: Any?) = if (something is DictionaryReference<*, *> && something.key == key && something.value == value) something as DictionaryReference<K, V> else null
+        override fun compareEqual(left: Any?, right: Any?) = left is DictionaryReference<*, *> && right is DictionaryReference<*, *> && left.store == right.store
+        override fun validate(something: Any?) = if (something is DictionaryReference<*, *> && something.key == k && something.value == v) something as DictionaryReference<K, V> else null
 
-        override fun compareEqual(left: DictionaryReference<K, V>?, right: DictionaryReference<K, V>?) = left != null && right != null && left.store == right.store
+        override val generics = mapOf("Key" to k, "Value" to v)
+        override val generic = DictionaryType
+
+        override fun write(buffer: NetworkBuffer, value: DictionaryReference<K, V>): Unit = buffer.run { writeMap(k, v, value.store) }
+        override fun read(buffer: NetworkBuffer) = DictionaryReference(k, v, buffer.readMap(k, v, Config.store.limits.maxMapSize))
+
+        override fun stringify(v: DictionaryReference<K, V>?) = "Dictionary(${v?.store?.size ?: 0} Entries)"
     }
 }
-data class DictionaryReference<K, V>(val key: ValueType<K>, val value: ValueType<V>, val store: MutableMap<K, V>)
-
 
 object VectorType : ValueType<Vec>() {
     override val name: String = "Vector"
@@ -456,25 +425,13 @@ object VectorType : ValueType<Vec>() {
     )
 
     override fun parse(str: String, space: Space) = null
-    override fun compareEqual(left: Vec?, right: Vec?) = left is Vec && right is Vec && left == right
+    override fun compareEqual(left: Any?, right: Any?) = left is Vec && right is Vec && left == right
     override fun validate(something: Any?) = if (something is Vec) something else null
-    override fun deserialize(json: JsonElement, space: Space, objects: MutableMap<Int, Pair<Any?, JsonElement>>): Vec {
-        return Vec(
-            json.asJsonObject.get("x").asDouble,
-            json.asJsonObject.get("y").asDouble,
-            json.asJsonObject.get("z").asDouble
-        )
-    }
 
-    override fun stringify(v: Vec) = "Vector(${shorten(v.x)}, ${shorten(v.y)}, ${shorten(v.z)})"
+    override fun write(buffer: NetworkBuffer, value: Vec) = buffer.write(NetworkBuffer.VECTOR3D, value)
+    override fun read(buffer: NetworkBuffer) = Vec.fromPoint(buffer.read(NetworkBuffer.VECTOR3D))
+
+    override fun stringify(v: Vec?) = v?.run { "Vector(${shorten(v.x)}, ${shorten(v.y)}, ${shorten(v.z)})" } ?: "Vector(0, 0, 0)"
 
     private fun shorten(num: Number) = (num.toDouble() * 1000.0).roundToInt() / 1000.0
-
-    override fun serialize(v: Vec, objects: MutableMap<Any?, Pair<Int, JsonElement>>): JsonElement {
-        val obj = JsonObject()
-        obj.addProperty("x", v.x)
-        obj.addProperty("y", v.y)
-        obj.addProperty("z", v.z)
-        return obj
-    }
 }

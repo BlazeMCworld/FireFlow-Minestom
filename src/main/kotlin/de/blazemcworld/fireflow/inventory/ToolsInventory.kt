@@ -9,10 +9,7 @@ object ToolsInventory {
     fun open(player: Player) {
         val inv = Inventory(InventoryType.CHEST_1_ROW, "Tools")
 
-        for ((slot, tool) in Tool.allTools.withIndex()) {
-            inv.setItemStack(slot, tool.item)
-        }
-
+        for ((slot, tool) in Tool.allTools.withIndex()) inv.setItemStack(slot, tool.item)
         player.openInventory(inv)
     }
 }

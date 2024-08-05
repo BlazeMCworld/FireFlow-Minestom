@@ -1,17 +1,16 @@
+@file:Suppress("UnstableApiUsage")
+
 package de.blazemcworld.fireflow.space
 
-import com.google.gson.*
+import com.github.luben.zstd.Zstd
 import de.blazemcworld.fireflow.FireFlow
 import de.blazemcworld.fireflow.Lobby
 import de.blazemcworld.fireflow.database.DatabaseHelper
-import de.blazemcworld.fireflow.gui.IOComponent
 import de.blazemcworld.fireflow.database.table.PlayersTable
 import de.blazemcworld.fireflow.database.table.SpaceRolesTable
 import de.blazemcworld.fireflow.database.table.SpaceRolesTable.role
 import de.blazemcworld.fireflow.database.table.SpaceRolesTable.space
-import de.blazemcworld.fireflow.gui.ExtractedNodeComponent
-import de.blazemcworld.fireflow.gui.NodeComponent
-import de.blazemcworld.fireflow.gui.Pos2d
+import de.blazemcworld.fireflow.gui.*
 import de.blazemcworld.fireflow.inventory.ToolsInventory
 import de.blazemcworld.fireflow.node.*
 import de.blazemcworld.fireflow.node.impl.NodeList
@@ -41,6 +40,7 @@ import net.minestom.server.instance.anvil.AnvilLoader
 import net.minestom.server.instance.block.Block
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
+import net.minestom.server.network.NetworkBuffer
 import net.minestom.server.timer.TaskSchedule
 import org.jetbrains.exposed.sql.JoinType
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -49,8 +49,15 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.File
+import java.nio.ByteBuffer
 import java.util.*
+import kotlin.collections.LinkedHashMap
 import kotlin.math.abs
+
+private typealias FunctionIO = Pair<FunctionInputsNode, FunctionOutputsNode>
+private typealias Value<T> = Pair<ValueType<T>, Any>
+
+private const val SPACE_MAGIC = 0x464c4f57
 
 private val TOOLS_ITEM = ItemStack.builder(Material.CHEST)
     .customName(Component.text("Tools").color(NamedTextColor.GOLD).decoration(TextDecoration.ITALIC, false))
@@ -60,18 +67,17 @@ private val TOOLS_ITEM = ItemStack.builder(Material.CHEST)
     ).build()
 
 class Space(val id: Int) {
-
     val codeInstance: InstanceContainer
     val playInstance: InstanceContainer
     val codeNodes = mutableListOf<NodeComponent>()
-    val functions = mutableListOf<Pair<FunctionInputsNode, FunctionOutputsNode>>()
+    val functions = mutableListOf<FunctionIO>()
     val functionNodes = mutableSetOf<FunctionCallNode>()
-    val varStore = mutableMapOf<String, Pair<ValueType<*>, Any?>>()
+    val varStore = mutableMapOf<String, Value<*>>()
     private var isUnused = false
     private var globalNodeContext: GlobalNodeContext
     private val spaceDir = File("spaces").resolve(id.toString())
-    private val codeFile = spaceDir.resolve("code.json")
-    private val variableFile = spaceDir.resolve("vars.json")
+    private val codeFile = spaceDir.resolve("code.flow")
+    private val varsFile = spaceDir.resolve("vars.flow")
 
     init {
         FireFlow.LOGGER.info { "Loading Space #$id" }
@@ -101,6 +107,9 @@ class Space(val id: Int) {
             it.modifier().fillHeight(-1, 0, Block.SMOOTH_STONE)
         }
 
+        if (!spaceDir.exists()) spaceDir.mkdirs()
+        codeFile.createNewFile()
+        varsFile.createNewFile()
         readCodeFromDisk()
         readVariablesFromDisk()
 
@@ -314,7 +323,6 @@ class Space(val id: Int) {
             updateTool(event.player, quit=true)
         }
 
-
         globalNodeContext = GlobalNodeContext(this)
     }
 
@@ -353,214 +361,137 @@ class Space(val id: Int) {
         }
     }
 
-    private fun writeType(t: ValueType<*>): JsonElement {
-        if (t.generic == null) {
-            return JsonPrimitive(t.name)
-        }
-        val info = JsonObject()
-        info.addProperty("__type", t.generic!!.name)
-        for ((k, v) in t.generics) {
-            info.add(k, writeType(v))
-        }
-        return info
+    private fun writeInsetValue(buffer: NetworkBuffer, i: IOComponent.InsetInput<*>) = buffer.run {
+        (i as IOComponent.InsetInput<Any>).insetVal?.let {
+            write(NetworkBuffer.BOOLEAN, true)
+            write(i.type, it)
+        } ?: write(NetworkBuffer.BOOLEAN, false)
     }
+
+    private fun readInsetValue(buffer: NetworkBuffer, i: IOComponent.InsetInput<*>) = buffer.run {
+        if (read(NetworkBuffer.BOOLEAN)) (i as IOComponent.InsetInput<Any>).insetVal = read(i.type)
+    }
+
+    private fun writePos2d(buffer: NetworkBuffer, p: Pos2d) = buffer.run {
+        write(NetworkBuffer.FLOAT, p.x.toFloat())
+        write(NetworkBuffer.FLOAT, p.y.toFloat())
+    }
+
+    private fun readPos2d(buffer: NetworkBuffer) = buffer.run { Pos2d(read(NetworkBuffer.FLOAT).toDouble(), read(NetworkBuffer.FLOAT).toDouble()) }
 
     private fun writeCodeToDisk() {
-        val data = JsonObject()
+        if (!spaceDir.exists()) spaceDir.mkdirs()
+        codeFile.writeBytes(NetworkBuffer().apply {
+            write(NetworkBuffer.VAR_INT, functions.size) // functionsSize
+            write(NetworkBuffer.VAR_INT, codeNodes.size) // nodesSize
 
-        val functionJson = JsonArray()
-        for ((input, output) in functions) {
-            val fnData = JsonObject()
-            fnData.addProperty("id", input.fn)
-            fnData.addProperty("inId", codeNodes.indexOf(input.component))
-            fnData.addProperty("outId", codeNodes.indexOf(output.component))
+            for ((input, output) in functions) { // functions
+                write(NetworkBuffer.STRING, input.fn) // id
 
-            val inputs = JsonArray()
-            for (type in input.outputs) {
-                val info = JsonObject()
-                info.addProperty("name", type.name)
-                info.add("type", writeType(type.type))
-                inputs.add(info)
-            }
-            fnData.add("in", inputs)
-
-            val outputs = JsonArray()
-            for (type in output.inputs) {
-                val info = JsonObject()
-                info.addProperty("name", type.name)
-                info.add("type", writeType(type.type))
-                outputs.add(info)
-            }
-            fnData.add("out", outputs)
-
-            functionJson.add(fnData)
-        }
-        data.add("functions", functionJson)
-
-        val nodeList = JsonArray()
-        for (node in codeNodes) {
-            val nodeJson = JsonObject()
-            nodeJson.addProperty("id", node.node.title)
-            nodeJson.addProperty("x", node.pos.x)
-            nodeJson.addProperty("y", node.pos.y)
-            if (node.node is FunctionCallNode) {
-                nodeJson.addProperty("fn", 1)
-            }
-            if (node is ExtractedNodeComponent) {
-                nodeJson.addProperty("ex", node.extraction.formalName)
-            }
-
-            val insetJson = JsonObject()
-            var totalInsets = 0
-            for (i in node.inputs) {
-                if (i is IOComponent.InsetInput<*> && i.insetVal != null) {
-                    insetJson.add(i.io.name, i.searlize())
-                    totalInsets++
+                fun writeFuncIO(n: BaseNode.IO<*>) {
+                    write(NetworkBuffer.STRING, n.name)
+                    writeType(this, n.type)
                 }
-            }
-            if (totalInsets > 0) nodeJson.add("insets", insetJson)
+                write(NetworkBuffer.VAR_INT, input.outputs.size) // inSize
+                for (i in input.outputs) writeFuncIO(i)
+                write(NetworkBuffer.VAR_INT, output.inputs.size) // outSize
+                for (o in output.inputs) writeFuncIO(o)
 
-            if (node.node.generics.isNotEmpty()) {
-                nodeJson.addProperty("id", node.node.generic!!.title)
-                val generics = JsonObject()
-                for ((k, v) in node.node.generics) {
-                    generics.add(k, writeType(v))
-                }
-                nodeJson.add("g", generics)
+                write(NetworkBuffer.VAR_INT, codeNodes.indexOf(input.component)) // inId
+                write(NetworkBuffer.VAR_INT, codeNodes.indexOf(output.component)) // outId
             }
 
-            if (node.valueLiteral != "unset") nodeJson.addProperty("literal", node.valueLiteral)
+            for (n in codeNodes) { // nodes
+                val type = n.node.generic?.let { NodeComponentType.GENERIC } ?: n.type
+                write(NetworkBuffer.VAR_INT, type.ordinal)
+                write(NetworkBuffer.BOOLEAN, n.node is FunctionCallNode) // fn
+                type.write(this, n)
+                writePos2d(this, n.pos)
 
-            val connections = JsonArray()
-            for (input in node.inputs) {
-                val outputs = JsonArray()
-                for (c in input.connections) {
-                    val id = JsonArray()
-                    id.add(codeNodes.indexOf(c.output.node))
-                    id.add(c.output.node.outputs.indexOf(c.output))
-                    for (relay in c.relays) {
-                        id.add(relay.x)
-                        id.add(relay.y)
+                if (n.valueLiteral != "unset") writeOptional(NetworkBuffer.STRING, n.valueLiteral)
+                else write(NetworkBuffer.BOOLEAN, false)
+            }
+
+            for (n in codeNodes) {
+                write(NetworkBuffer.VAR_INT, n.inputs.size)
+                for (i in n.inputs) {
+                    if (i is IOComponent.InsetInput<*>) writeInsetValue(this, i)
+                    write(NetworkBuffer.VAR_INT, i.connections.size)
+                    for (c in i.connections) {
+                        write(NetworkBuffer.VAR_INT, c.relays.size)
+                        write(NetworkBuffer.VAR_INT, codeNodes.indexOf(c.output.node))
+                        write(NetworkBuffer.VAR_INT, c.output.node.outputs.indexOf(c.output))
+                        for (r in c.relays) writePos2d(this, r)
                     }
-                    outputs.add(id)
                 }
-                connections.add(outputs)
             }
-            nodeJson.add("connections", connections)
-            nodeList.add(nodeJson)
-        }
-        data.add("nodes", nodeList)
-        if (!codeFile.parentFile.exists()) codeFile.parentFile.mkdirs()
-        codeFile.writeText(data.toString())
+        }.let { NetworkBuffer(it.writeIndex()).run {
+            write(NetworkBuffer.INT, SPACE_MAGIC)
+	    val uncompressedSize = it.writeIndex()
+            val compressed = Zstd.compress(it.readBytes(uncompressedSize), 9)
+	    write(NetworkBuffer.VAR_INT, compressed.size)
+            write(NetworkBuffer.VAR_INT, uncompressedSize)
+            write(NetworkBuffer.RAW_BYTES, compressed)
+            readBytes(writeIndex())
+        } })
     }
-
-    private fun readType(json: JsonElement): ValueType<*>? {
-        if (json.isJsonPrimitive) {
-            return AllTypes.all.find { it is ValueType<*> && it.name == json.asString } as ValueType<*>?
-        }
-        if (json !is JsonObject) return null
-        val genericType = AllTypes.all.find { it is GenericType && json.get("__type").asString == it.name } as GenericType
-        val info = mutableMapOf<String, ValueType<*>>()
-        for ((k, v) in json.entrySet()) {
-            if (k == "__type") continue
-            info[k] = readType(v) ?: return null
-        }
-        return genericType.create(info)
-    }
-
 
     private fun readCodeFromDisk() {
-        if (!codeFile.exists()) return
-        val data = JsonParser.parseString(codeFile.readText()).asJsonObject
-        codeNodes.clear()
-        functions.clear()
-        functionNodes.clear()
+        NetworkBuffer(ByteBuffer.wrap(codeFile.readBytes().apply { if (size < 6) return })).run {
+            if (read(NetworkBuffer.INT) != SPACE_MAGIC) return
+            val compressedSize = read(NetworkBuffer.VAR_INT)
+            val uncompressedSize = read(NetworkBuffer.VAR_INT)
+            NetworkBuffer(ByteBuffer.wrap(Zstd.decompress(readBytes(compressedSize), uncompressedSize)))
+        }.run buffer@{
+            codeNodes.clear()
+            functions.clear()
+            functionNodes.clear()
 
-        val newNodes = mutableListOf<NodeComponent?>()
-        while (newNodes.size < data.getAsJsonArray("nodes").size()) {
-            newNodes += null
-        }
-
-        fn@for (fnJson in data.getAsJsonArray("functions")) {
-            if (fnJson !is JsonObject) throw IllegalStateException("Expected only json objects in functions array!")
-
-            val id = fnJson.get("id").asString
-            val inputs = FunctionInputsNode(id)
-            val outputs = FunctionOutputsNode(id)
-
-            for (input in fnJson.getAsJsonArray("in")) {
-                if (input !is JsonObject) throw IllegalStateException("Expected only json objects in function inputs array!")
-                inputs.add(input.get("name").asString, readType(input.get("type")) ?: continue@fn)
-            }
-            for (output in fnJson.getAsJsonArray("out")) {
-                if (output !is JsonObject) throw IllegalStateException("Expected only json objects in function outputs array!")
-                outputs.add(output.get("name").asString, readType(output.get("type")) ?: continue@fn)
-            }
-
-            functions += inputs to outputs
-            newNodes[fnJson.get("inId").asInt] = inputs.component
-            newNodes[fnJson.get("outId").asInt] = outputs.component
-            functionNodes.add(FunctionCallNode(inputs, outputs))
-        }
-
-        for ((id, nodeJson) in data.getAsJsonArray("nodes").withIndex()) {
-            if (nodeJson !is JsonObject) throw IllegalStateException("Expected only json objects in node array.")
-
-            val comp = newNodes[id] ?: run {
-                if (nodeJson.has("ex")) {
-                    TypeExtraction.list.get(nodeJson.get("ex").asString)?.let { extraction ->
-                        return@run ExtractedNodeComponent(extraction)
+	    val functionsSize = read(NetworkBuffer.VAR_INT)
+            val nodesSize = read(NetworkBuffer.VAR_INT)
+            codeNodes += buildList<NodeComponent?>(nodesSize) {
+                repeat(functionsSize) fn@{
+                    val id = read(NetworkBuffer.STRING)
+                    val inputs = FunctionInputsNode(id)
+                    val outputs = FunctionOutputsNode(id)
+                    repeat(read(NetworkBuffer.VAR_INT)) {
+                        inputs.add(read(NetworkBuffer.STRING), readType(this@buffer) ?: return@fn)
+                    }
+                    repeat(read(NetworkBuffer.VAR_INT)) {
+                        outputs.add(read(NetworkBuffer.STRING), readType(this@buffer) ?: return@fn)
+                    }
+                    functions.add(inputs to outputs)
+                    this[read(NetworkBuffer.VAR_INT)] = inputs.component
+                    this[read(NetworkBuffer.VAR_INT)] = outputs.component
+                    functionNodes.add(FunctionCallNode(inputs, outputs))
+                }
+                repeat(nodesSize) {
+                    val type = NodeComponentType.entries[read(NetworkBuffer.VAR_INT)]
+                    this += run comp@{
+                        type.read(this@buffer, if (read(NetworkBuffer.BOOLEAN)) functionNodes else NodeList.all)
+                    }?.apply {
+                        pos = readPos2d(this@buffer)
+                        if (read(NetworkBuffer.BOOLEAN)) valueLiteral = read(NetworkBuffer.STRING)
                     }
                 }
-                if (nodeJson.has("g")) {
-                    val type = NodeList.all.find { it is GenericNode && it.title == nodeJson.get("id").asString } as GenericNode? ?: return@run null
-
-                    val info = mutableMapOf<String, ValueType<*>>()
-                    for ((k, v) in nodeJson.get("g").asJsonObject.entrySet()) {
-                        info[k] = readType(v) ?: return@run null
-                    }
-                    return@run type.create(info).newComponent()
-                }
-                var search = NodeList.all
-                if (nodeJson.has("fn")) {
-                    search = functionNodes
-                }
-                val type = search.find { it.title == nodeJson.get("id").asString && it is BaseNode } as BaseNode?
-                type?.newComponent()
-            } ?: continue
-            comp.pos = Pos2d(
-                nodeJson.get("x").asDouble,
-                nodeJson.get("y").asDouble
-            )
-            if (nodeJson.has("literal")) comp.valueLiteral = nodeJson.get("literal").asString
-            if (nodeJson.has("insets")) {
-                val insetJson = nodeJson.getAsJsonObject("insets")
-                for (i in comp.inputs) {
-                    if (i is IOComponent.InsetInput<*> && insetJson.has(i.io.name)) {
-                        i.deserialize(insetJson.get(i.io.name), this)
+                repeat(nodesSize) n@{ n ->
+                    val node = this[n] ?: return@n
+                    repeat(read(NetworkBuffer.VAR_INT)) { id ->
+                        node.inputs[id].let {
+                            if (it is IOComponent.InsetInput<*>) readInsetValue(this@buffer, it)
+                            repeat(read(NetworkBuffer.VAR_INT)) c@{ _ ->
+                                val relaysSize = read(NetworkBuffer.VAR_INT)
+                                (this[read(NetworkBuffer.VAR_INT)]
+                                    ?: return@c).outputs[read(NetworkBuffer.VAR_INT)].connect(it, run {
+                                    buildList(relaysSize) { repeat(relaysSize) { add(readPos2d(this@buffer)) } }
+                                })
+                            }
+                        }
                     }
                 }
-            }
-            newNodes[id] = comp
+                repeat(nodesSize) { (this[it] ?: return@repeat).update(codeInstance) }
+            }.filterNotNull()
         }
-        for ((index, nodeJson) in data.get("nodes").asJsonArray.withIndex()) {
-            if (nodeJson !is JsonObject) continue
-            val node = newNodes[index] ?: continue
-
-            for ((inputIndex, conn) in nodeJson.get("connections").asJsonArray.withIndex()) {
-                val input = node.inputs[inputIndex]
-                for (outputInfo in conn.asJsonArray) {
-                    if (outputInfo !is JsonArray) throw IllegalStateException("Expected only json arrays in connections array.")
-                    val relays = mutableListOf<Pos2d>()
-                    for (i in 2..<outputInfo.size() step 2) {
-                        relays.add(Pos2d(outputInfo[i].asDouble, outputInfo[i + 1].asDouble))
-                    }
-                    (newNodes[outputInfo[0].asInt] ?: continue).outputs[outputInfo[1].asInt].connect(input, relays)
-                }
-            }
-        }
-        codeNodes.addAll(newNodes.filterNotNull())
-        for (node in codeNodes) node.update(codeInstance)
     }
 
     fun save() {
@@ -571,48 +502,27 @@ class Space(val id: Int) {
     }
 
     private fun writeVariablesToDisk() {
-        val types = mutableMapOf<ValueType<*>, MutableSet<Pair<String, Any?>>>()
-        for ((n, v) in varStore) {
-            types.computeIfAbsent(v.first) { mutableSetOf() }.add(n to v.second)
-        }
-        val store = JsonObject()
-        val objectsJson = JsonArray()
-        val typesMap = JsonArray()
-        for ((t, all) in types) {
-            val entry = JsonObject()
-            entry.add("type", writeType(t))
-            val map = JsonObject()
-            val objects = mutableMapOf<Any?, Pair<Int, JsonElement>>()
-            for ((k, v) in all) {
-                map.add(k, (t as ValueType<Any?>).serialize(v, objects))
+        if (!spaceDir.exists()) spaceDir.mkdirs()
+        varsFile.writeBytes(NetworkBuffer().apply {
+            write(NetworkBuffer.INT, SPACE_MAGIC)
+            write(NetworkBuffer.VAR_INT, varStore.size)
+            for ((k, v) in varStore) {
+                (v.first as ValueType<Any>).let {
+                    writeType(this, it)
+                    write(NetworkBuffer.STRING, k)
+                    write(it, v.second)
+                }
             }
-            entry.add("vars", map)
-            for ((id, v) in objects.values) {
-                while (objectsJson.size() < id) objectsJson.add(JsonNull.INSTANCE)
-                objectsJson.set(id, v)
-            }
-            typesMap.add(entry)
-        }
-        store.add("types", typesMap)
-        store.add("objects", objectsJson)
-        if (!variableFile.parentFile.exists()) variableFile.parentFile.mkdirs()
-        variableFile.writeText(store.toString())
+        }.run { readBytes(writeIndex()) })
     }
 
-    private fun readVariablesFromDisk() {
+    private fun readVariablesFromDisk() = NetworkBuffer(ByteBuffer.wrap(varsFile.readBytes().apply { if (size < 5) return })).run buffer@{
+        if (read(NetworkBuffer.INT) != SPACE_MAGIC) return
         varStore.clear()
-        if (!variableFile.exists()) return
-        val json = JsonParser.parseString(variableFile.readText()).asJsonObject
-
-        val objectsJson = json.getAsJsonArray("objects")
-        val objects = mutableMapOf<Int, Pair<Any?, JsonElement>>()
-        for ((i, v) in objectsJson.withIndex()) objects[i] = null to v
-
-        for (type in json.getAsJsonArray("types")) {
-            val t = readType(type.asJsonObject.get("type")) ?: continue
-            for ((k, v) in type.asJsonObject.getAsJsonObject("vars").entrySet()) {
-                varStore[k] = t to t.deserialize(v, this, objects)
-            }
-        }
+        varStore += buildMap { repeat(read(NetworkBuffer.VAR_INT)) {
+            (readType(this@buffer) ?: return@repeat).let { this[read(NetworkBuffer.STRING)] = it to read(it).apply {
+                if (this is PlayerReference) withSpace(this@Space)
+            } }
+        } }
     }
 }

@@ -17,21 +17,18 @@ object ConsoleHandler {
             when (input) {
                 "update" -> {
                     FireFlow.LOGGER.info { "Updating..." }
-                    val zip = ZipInputStream(URI.create(Config.store.updateUrl).toURL().openStream())
-                    try {
-                        var entry = zip.nextEntry
+                    ZipInputStream(URI.create(Config.store.updateUrl).toURL().openStream()).use {
+                        var entry = it.nextEntry
                         while (entry?.name?.endsWith(".jar") == false) {
-                            zip.closeEntry()
-                            entry = zip.nextEntry
+                            it.closeEntry()
+                            entry = it.nextEntry
                         }
                         if (entry == null) {
                             FireFlow.LOGGER.info { "Failed to find jar in zip!" }
-                            continue
+                            return@use
                         }
                         val self = Path(ConsoleHandler::class.java.protectionDomain.codeSource.location.toURI().path)
-                        self.writeBytes(zip.readAllBytes())
-                    } finally {
-                        zip.close()
+                        self.writeBytes(it.readAllBytes())
                     }
                     FireFlow.LOGGER.info { "Updated jar!" }
                 }

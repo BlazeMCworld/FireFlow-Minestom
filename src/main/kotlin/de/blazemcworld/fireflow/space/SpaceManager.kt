@@ -45,13 +45,9 @@ object SpaceManager {
         return createdId
     }
 
-    fun sendToSpace(player: Player, id: Int) {
-        player.fireflowSetInstance(getOrLoadSpace(id).playInstance)
-    }
+    fun sendToSpace(player: Player, id: Int) = player.fireflowSetInstance(getOrLoadSpace(id).playInstance)
 
-    private fun getOrLoadSpace(id: Int): Space {
-        return loadedSpaces[id] ?: loadSpace(id)
-    }
+    private fun getOrLoadSpace(id: Int) = loadedSpaces[id] ?: loadSpace(id)
 
     private fun loadSpace(id: Int): Space {
         val space = Space(id)

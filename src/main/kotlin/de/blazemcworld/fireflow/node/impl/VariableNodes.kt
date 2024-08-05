@@ -16,7 +16,7 @@ class SetVariableNode(private val store: VariableStore) : GenericNode("Set ${sto
         output("Next", SignalType)
     }
 
-    class Impl<T>(val type: ValueType<T>, private val store: VariableStore, override val generic: SetVariableNode) : BaseNode("Set ${store.type} ${type.name} Variable", type.material) {
+    class Impl<T : Any>(val type: ValueType<T>, private val store: VariableStore, override val generic: SetVariableNode) : BaseNode("Set ${store.type} ${type.name} Variable", type.material) {
         private val signal = input("Signal", SignalType)
         private val name = input("Name", TextType)
         private val value = input("Value", type)
@@ -44,7 +44,7 @@ class GetVariableNode(private val store: VariableStore) : GenericNode("Get ${sto
         genericOutput("Value")
     }
 
-    class Impl<T>(val type: ValueType<T>, private val store: VariableStore, override val generic: GetVariableNode) : BaseNode("Get ${store.type} ${type.name} Variable", type.material) {
+    class Impl<T : Any>(val type: ValueType<T>, private val store: VariableStore, override val generic: GetVariableNode) : BaseNode("Get ${store.type} ${type.name} Variable", type.material) {
         private val name = input("Name", TextType)
         private val value = output("Value", type)
         override val generics = mapOf("Type" to type)
@@ -83,7 +83,7 @@ interface VariableStore {
         override fun getVariable(ctx: EvaluationContext, name: String): Any? = ctx.varStore[name]
 
         override fun setVariable(ctx: EvaluationContext, name: String, value: Any?, type: ValueType<*>) {
-            ctx.varStore[name] = value
+            value?.let { ctx.varStore[name] = it } ?: ctx.varStore.remove(name)
         }
     }
 
@@ -93,7 +93,7 @@ interface VariableStore {
         override fun getVariable(ctx: EvaluationContext, name: String): Any? = ctx.global.varStore[name]
 
         override fun setVariable(ctx: EvaluationContext, name: String, value: Any?, type: ValueType<*>) {
-            ctx.global.varStore[name] = value
+            value?.let { ctx.global.varStore[name] = it } ?: ctx.global.varStore.remove(name)
         }
     }
 
@@ -105,7 +105,7 @@ interface VariableStore {
         }
 
         override fun setVariable(ctx: EvaluationContext, name: String, value: Any?, type: ValueType<*>) {
-            ctx.global.space.varStore[name] = type to value
+            value?.let { ctx.global.space.varStore[name] = type to it } ?: ctx.global.space.varStore.remove(name)
         }
     }
 }

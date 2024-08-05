@@ -41,12 +41,10 @@ object VariablesCommand : Command("variables", "vars") {
                 return@exec
             }
 
-            val filter = if (ctx.has("filter")) ctx.get("filter") else ""
-
             var msgs = 0
             for ((name, value) in space.varStore) {
-                if (!name.contains(filter) && value.second != null) continue
-                sender.sendMessage(Component.text(name + " -> " + (value.first as ValueType<Any?>).stringify(value.second)).color(value.first.color))
+                if (!name.contains(ctx.get("filter") ?: "")) continue
+                sender.sendMessage(Component.text(name + " -> " + (value.first as ValueType<Any>).stringify(value.second)).color(value.first.color))
                 if (msgs++ > 100) break
             }
         }

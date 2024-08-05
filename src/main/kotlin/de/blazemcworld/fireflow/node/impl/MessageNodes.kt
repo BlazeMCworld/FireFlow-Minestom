@@ -28,7 +28,7 @@ object ToMessageNode : GenericNode("To Message", Material.BOOK) {
         output("Output", MessageType)
     }
 
-    class Impl<T>(val type: ValueType<T>) : BaseNode("To Message", type.material) {
+    class Impl<T : Any>(val type: ValueType<T>) : BaseNode("To Message", type.material) {
         private val input = input("Input", type)
         private val output = output("Output", MessageType)
         override val generics = mapOf("Type" to type)

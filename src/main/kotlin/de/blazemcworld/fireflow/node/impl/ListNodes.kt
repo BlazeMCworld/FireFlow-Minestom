@@ -16,7 +16,7 @@ object ListAppendNode : GenericNode("List Append", Material.WEEPING_VINES) {
     private val cache = WeakHashMap<ValueType<*>, Impl<*>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*> = cache.computeIfAbsent(generics["Type"]) { Impl(generics["Type"]!!) }
 
-    class Impl<T>(type: ValueType<T>) : BaseNode("List(${type.name}) Append", type.material) {
+    class Impl<T : Any>(type: ValueType<T>) : BaseNode("List(${type.name}) Append", type.material) {
         private val signal = input("Signal", SignalType)
         private val list = input("List", ListType.create(type))
         private val value = input("Value", type)
@@ -45,7 +45,7 @@ object ListLengthNode : GenericNode("List Length", Material.BLAZE_ROD) {
     private val cache = WeakHashMap<ValueType<*>, Impl<*>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*> = cache.computeIfAbsent(generics["Type"]) { Impl(generics["Type"]!!) }
 
-    class Impl<T>(type: ValueType<T>) : BaseNode("List(${type.name}) Length", type.material) {
+    class Impl<T : Any>(type: ValueType<T>) : BaseNode("List(${type.name}) Length", type.material) {
         private val list = input("List", ListType.create(type))
         private val size = output("Length", NumberType)
 
@@ -72,7 +72,7 @@ object ListGetNode : GenericNode("List Get", Material.TWISTING_VINES) {
     private val cache = WeakHashMap<ValueType<*>, Impl<*>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*> = cache.computeIfAbsent(generics["Type"]) { Impl(generics["Type"]!!) }
 
-    class Impl<T>(type: ValueType<T>) : BaseNode("List(${type.name}) Get", type.material) {
+    class Impl<T : Any>(type: ValueType<T>) : BaseNode("List(${type.name}) Get", type.material) {
         private val list = input("List", ListType.create(type))
         private val index = input("Index", NumberType)
         private val value = output("Value", type)
@@ -101,7 +101,7 @@ object EmptyListNode : GenericNode("Empty List", Material.STRING) {
     private val cache = WeakHashMap<ValueType<*>, Impl<*>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*> = cache.computeIfAbsent(generics["Type"]) { Impl(generics["Type"]!!) }
 
-    class Impl<T>(val type: ValueType<T>) : BaseNode("Empty List(${type.name})", type.material) {
+    class Impl<T : Any>(val type: ValueType<T>) : BaseNode("Empty List(${type.name})", type.material) {
         private val list = output("List", ListType.create(type))
 
         override val generic = EmptyListNode
@@ -124,7 +124,7 @@ object ListRemoveNode : GenericNode("List Remove", Material.TNT) {
     private val cache = WeakHashMap<ValueType<*>, Impl<*>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*> = cache.computeIfAbsent(generics["Type"]) { Impl(generics["Type"]!!) }
 
-    class Impl<T>(type: ValueType<T>) : BaseNode("List(${type.name}) Remove", type.material) {
+    class Impl<T : Any>(type: ValueType<T>) : BaseNode("List(${type.name}) Remove", type.material) {
         private val signal = input("Signal", SignalType)
         private val list = input("List", ListType.create(type))
         private val index = input("Index", NumberType)
@@ -160,7 +160,7 @@ object ListInsertNode : GenericNode("List Insert", Material.SHEARS) {
     private val cache = WeakHashMap<ValueType<*>, Impl<*>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*> = cache.computeIfAbsent(generics["Type"]) { Impl(generics["Type"]!!) }
 
-    class Impl<T>(type: ValueType<T>) : BaseNode("List(${type.name}) Insert", type.material) {
+    class Impl<T : Any>(type: ValueType<T>) : BaseNode("List(${type.name}) Insert", type.material) {
         private val signal = input("Signal", SignalType)
         private val list = input("List", ListType.create(type))
         private val index = input("Index", NumberType)
@@ -198,7 +198,7 @@ object ListSetNode : GenericNode("List Set", Material.WHITE_WOOL) {
     private val cache = WeakHashMap<ValueType<*>, Impl<*>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*> = cache.computeIfAbsent(generics["Type"]) { Impl(generics["Type"]!!) }
 
-    class Impl<T>(type: ValueType<T>) : BaseNode("List(${type.name}) Set", type.material) {
+    class Impl<T : Any>(type: ValueType<T>) : BaseNode("List(${type.name}) Set", type.material) {
         private val signal = input("Signal", SignalType)
         private val list = input("List", ListType.create(type))
         private val index = input("Index", NumberType)

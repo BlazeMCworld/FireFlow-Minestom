@@ -30,6 +30,8 @@ class Config(json: JsonObject) {
     class Limits(json: JsonObject) {
         val spacesPerPlayer = json.get("spacesPerPlayer")?.asInt ?: 5
         val cpuPerTick = json.get("cpuPerTick")?.asLong ?: 10000000L //10ms
+        val maxListSize = json.get("maxListSize")?.asInt ?: Int.MAX_VALUE
+        val maxMapSize = json.get("maxMapSize")?.asInt ?: Int.MAX_VALUE
     }
 
     val port = json.get("port")?.asInt ?: 25565

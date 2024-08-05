@@ -14,7 +14,7 @@ object EmptyDictionaryNode : GenericNode("Empty Dictionary", Material.COBWEB) {
     private val cache = WeakHashMap<Pair<ValueType<*>, ValueType<*>>, Impl<*, *>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*, *> = cache.computeIfAbsent(generics["Key"]!! to generics["Value"]!!) { Impl(generics["Key"]!!, generics["Value"]!!) }
 
-    class Impl<K, V>(private val key: ValueType<K>, private val value: ValueType<V>) : BaseNode("Empty Dictionary(${key.name}, ${value.name})", key.material) {
+    class Impl<K : Any, V : Any>(private val key: ValueType<K>, private val value: ValueType<V>) : BaseNode("Empty Dictionary(${key.name}, ${value.name})", key.material) {
         private val dict = output("Dictionary", DictionaryType.create(key, value))
 
         override val generic = EmptyDictionaryNode
@@ -38,7 +38,7 @@ object DictionaryGetNode : GenericNode("Dictionary Get", Material.STRING) {
     private val cache = WeakHashMap<Pair<ValueType<*>, ValueType<*>>, Impl<*, *>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*, *> = cache.computeIfAbsent(generics["Key"]!! to generics["Value"]!!) { Impl(generics["Key"]!!, generics["Value"]!!) }
 
-    class Impl<K, V>(key: ValueType<K>, value: ValueType<V>) : BaseNode("Dictionary(${key.name}, ${value.name}) Get", key.material) {
+    class Impl<K : Any, V : Any>(key: ValueType<K>, value: ValueType<V>) : BaseNode("Dictionary(${key.name}, ${value.name}) Get", key.material) {
         private val dict = input("Dictionary", DictionaryType.create(key, value))
         private val keyIn = input("Key", key)
         private val valueOut = output("Value", value)
@@ -66,7 +66,7 @@ object DictionarySetNode : GenericNode("Dictionary Set", Material.BLUE_WOOL) {
     private val cache = WeakHashMap<Pair<ValueType<*>, ValueType<*>>, Impl<*, *>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*, *> = cache.computeIfAbsent(generics["Key"]!! to generics["Value"]!!) { Impl(generics["Key"]!!, generics["Value"]!!) }
 
-    class Impl<K, V>(key: ValueType<K>, value: ValueType<V>) : BaseNode("Dictionary(${key.name}, ${value.name}) Set", key.material) {
+    class Impl<K : Any, V : Any>(key: ValueType<K>, value: ValueType<V>) : BaseNode("Dictionary(${key.name}, ${value.name}) Set", key.material) {
         private val signal = input("Signal", SignalType)
         private val dict = input("Dictionary", DictionaryType.create(key, value))
         private val keyIn = input("Key", key)
@@ -100,7 +100,7 @@ object DictionaryRemoveNode : GenericNode("Dictionary Remove", Material.RED_WOOL
     private val cache = WeakHashMap<Pair<ValueType<*>, ValueType<*>>, Impl<*, *>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*, *> = cache.computeIfAbsent(generics["Key"]!! to generics["Value"]!!) { Impl(generics["Key"]!!, generics["Value"]!!) }
 
-    class Impl<K, V>(key: ValueType<K>, value: ValueType<V>) : BaseNode("Dictionary(${key.name}, ${value.name}) Remove", key.material) {
+    class Impl<K : Any, V : Any>(key: ValueType<K>, value: ValueType<V>) : BaseNode("Dictionary(${key.name}, ${value.name}) Remove", key.material) {
         private val signal = input("Signal", SignalType)
         private val dict = input("Dictionary", DictionaryType.create(key, value))
         private val keyIn = input("Key", key)
@@ -131,7 +131,7 @@ object DictionarySizeNode : GenericNode("Dictionary Size", Material.YELLOW_WOOL)
     private val cache = WeakHashMap<Pair<ValueType<*>, ValueType<*>>, Impl<*, *>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*, *> = cache.computeIfAbsent(generics["Key"]!! to generics["Value"]!!) { Impl(generics["Key"]!!, generics["Value"]!!) }
 
-    class Impl<K, V>(key: ValueType<K>, value: ValueType<V>) : BaseNode("Dictionary(${key.name}, ${value.name}) Size", key.material) {
+    class Impl<K : Any, V : Any>(key: ValueType<K>, value: ValueType<V>) : BaseNode("Dictionary(${key.name}, ${value.name}) Size", key.material) {
         private val dict = input("Dictionary", DictionaryType.create(key, value))
         private val size = output("Size", NumberType)
 
@@ -158,7 +158,7 @@ object DictionaryKeysNode : GenericNode("Dictionary Keys", Material.GREEN_WOOL) 
     private val cache = WeakHashMap<Pair<ValueType<*>, ValueType<*>>, Impl<*, *>>()
     override fun create(generics: Map<String, ValueType<*>>): Impl<*, *> = cache.computeIfAbsent(generics["Key"]!! to generics["Value"]!!) { Impl(generics["Key"]!!, generics["Value"]!!) }
 
-    class Impl<K, V>(private val key: ValueType<K>, value: ValueType<V>) : BaseNode("Dictionary(${key.name}, ${value.name}) Keys", key.material) {
+    class Impl<K : Any, V : Any>(private val key: ValueType<K>, value: ValueType<V>) : BaseNode("Dictionary(${key.name}, ${value.name}) Keys", key.material) {
         private val dict = input("Dictionary", DictionaryType.create(key, value))
         private val keys = output("Keys", ListType.create(key))
 

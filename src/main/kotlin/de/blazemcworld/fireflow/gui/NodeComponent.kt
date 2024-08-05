@@ -1,12 +1,13 @@
+@file:Suppress("UnstableApiUsage")
+
 package de.blazemcworld.fireflow.gui
 
-import de.blazemcworld.fireflow.node.BaseNode
-import de.blazemcworld.fireflow.node.ConditionType
-import de.blazemcworld.fireflow.node.TypeExtraction
+import de.blazemcworld.fireflow.node.*
 import de.blazemcworld.fireflow.node.impl.ValueLiteralNode
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.instance.Instance
+import net.minestom.server.network.NetworkBuffer
 import kotlin.math.max
 import kotlin.math.min
 
@@ -15,6 +16,7 @@ private const val DOUBLE_PADDING = PADDING * 2
 private const val CENTER_SPACING = 0.2
 
 class ExtractedNodeComponent(val extraction: TypeExtraction<*, *>) : NodeComponent(BaseNode.VOID) {
+    override val type = NodeComponentType.EXTRACTION
     override val renderTitle = false
     private val borderColor = extraction.input.type.color
 
@@ -33,7 +35,8 @@ class ExtractedNodeComponent(val extraction: TypeExtraction<*, *>) : NodeCompone
 }
 
 open class NodeComponent(val node: BaseNode) {
-    var valueLiteral = "unset"
+    open val type = NodeComponentType.BASE
+    var valueLiteral: String? = null
     private val valueDisplay = TextComponent()
     var pos = Pos2d.ZERO
     var isBeingMoved = false
@@ -50,7 +53,7 @@ open class NodeComponent(val node: BaseNode) {
         var inputWidth = 0.0
         var outputWidth = 0.0
 
-        if (node is ValueLiteralNode<*>) inputWidth = TextWidth.calculate(valueLiteral) / 40
+        if (node is ValueLiteralNode<*>) inputWidth = TextWidth.calculate(valueLiteral ?: DEFAULT_LITERAL) / 40
 
         for (i in inputs) {
             i.update(inst)
@@ -67,7 +70,7 @@ open class NodeComponent(val node: BaseNode) {
         }
         inputWidth += CENTER_SPACING
         if (node is ValueLiteralNode<*>) {
-            valueDisplay.text = Component.text(valueLiteral).color(node.type.color)
+            valueDisplay.text = Component.text(valueLiteral ?: DEFAULT_LITERAL).color(node.type.color)
             valueDisplay.pos = Pos2d(pos.x + inputWidth - valueDisplay.width(), inputY + baseY)
             inputY -= valueDisplay.height()
             valueDisplay.update(inst)
@@ -114,4 +117,33 @@ open class NodeComponent(val node: BaseNode) {
     }
 
     fun includes(pos: Pos2d) = outline.includes(pos)
+
+    companion object {
+        const val DEFAULT_LITERAL = "unset"
+    }
+}
+
+enum class NodeComponentType(val read: NetworkBuffer.(Set<Node>) -> NodeComponent?, val write: NetworkBuffer.(NodeComponent) -> Unit) {
+    BASE({ search ->
+        read(NetworkBuffer.STRING).let { id -> (search.find { it is BaseNode && it.title == id } as? BaseNode)?.newComponent() }
+    }, { write(NetworkBuffer.STRING, it.node.title) }),
+    GENERIC(n@{ search ->
+        val id = read(NetworkBuffer.STRING)
+        val type = search.find { it is GenericNode && it.title == id } as? GenericNode ?: return@n null
+        val genericsSize = read(NetworkBuffer.VAR_INT)
+        type.create(buildMap(genericsSize) {
+            repeat(genericsSize) { this[read(NetworkBuffer.STRING)] = readType(this@n) ?: return@n null }
+        }).newComponent()
+    }, { it.node.generic?.let { genericType ->
+        write(NetworkBuffer.STRING, genericType.title)
+        write(NetworkBuffer.VAR_INT, it.node.generics.size)
+        for ((k, v) in it.node.generics) {
+            write(NetworkBuffer.STRING, k) // name
+            writeType(this, v) // type
+        }
+    } }),
+    EXTRACTION({ TypeExtraction.list[read(NetworkBuffer.STRING)]?.let { ExtractedNodeComponent(it) } }, {
+        if (it is ExtractedNodeComponent) write(NetworkBuffer.STRING, it.extraction.formalName)
+    }),
+    ;
 }

@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 package de.blazemcworld.fireflow
 
 import de.blazemcworld.fireflow.inventory.MySpacesInventory

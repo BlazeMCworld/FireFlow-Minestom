@@ -1,4 +1,5 @@
 plugins {
+    application
     kotlin("jvm") version "2.0.0"
     id("io.github.goooler.shadow") version "8.1.7"
 }
@@ -25,6 +26,9 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-jdbc:0.52.0")
     implementation("org.jetbrains.exposed:exposed-json:0.52.0")
 
+    // compression
+    implementation("com.github.luben:zstd-jni:1.5.6-4")
+
     // logging
     implementation("io.github.oshai:kotlin-logging-jvm:6.0.9")
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.23.1")
@@ -39,4 +43,8 @@ tasks.withType<Jar> {
     manifest {
         attributes["Main-Class"] = "de.blazemcworld.fireflow.FireFlowKt"
     }
+}
+application {
+    mainClass.set("de.blazemcworld.fireflow.FireFlowKt")
+    tasks.run.get().workingDir = File(rootProject.projectDir, ".run")
 }
