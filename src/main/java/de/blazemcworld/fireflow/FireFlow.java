@@ -3,6 +3,8 @@ package de.blazemcworld.fireflow;
 import de.blazemcworld.fireflow.commands.CodeCommand;
 import de.blazemcworld.fireflow.commands.LobbyCommand;
 import de.blazemcworld.fireflow.commands.PlayCommand;
+import de.blazemcworld.fireflow.database.Database;
+import de.blazemcworld.fireflow.database.PlayersTable;
 import de.blazemcworld.fireflow.util.Config;
 import de.blazemcworld.fireflow.util.PlayerExitInstanceEvent;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -34,6 +36,7 @@ public class FireFlow {
         MinecraftServer.setBrandName("FireFlow");
         MojangAuth.init();
         ConsoleHandler.init();
+        new Database();
 
         CommandManager cmds = MinecraftServer.getCommandManager();
         cmds.register(new PlayCommand());
@@ -45,6 +48,7 @@ public class FireFlow {
         events.addListener(AsyncPlayerConfigurationEvent.class, event -> {
             event.setSpawningInstance(Lobby.instance);
             event.getPlayer().setGameMode(GameMode.CREATIVE);
+            ((PlayersTable) Database.tables.get("players")).setName(event.getPlayer().getUuid().toString(), event.getPlayer().getUsername());
         });
 
         events.addListener(PlayerDisconnectEvent.class, event -> {

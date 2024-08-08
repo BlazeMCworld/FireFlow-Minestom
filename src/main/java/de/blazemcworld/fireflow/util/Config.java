@@ -20,5 +20,7 @@ public class Config {
         }
     }
 
-    public record Store(String motd) {}
+    public record Store(String motd, Database database) {}
+
+    public record Database(String jdbcUrl, String user, String password) {}
 }
