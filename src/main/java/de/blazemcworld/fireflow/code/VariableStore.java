@@ -77,5 +77,10 @@ public class VariableStore {
         return out;
     }
 
+    public void reset() {
+        values.clear();
+        types.clear();
+    }
+
     public record VarEntry(String name, WireType<?> type, Object value) {}
 }

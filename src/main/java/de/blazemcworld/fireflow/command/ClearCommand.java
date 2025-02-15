@@ -71,6 +71,14 @@ public class ClearCommand extends Command {
                 Transfer.move(each, space.play);
             }
         }, new ArgumentLiteral("developers"));
+
+        addSyntax((sender, ctx) -> {
+            Space space = getSpace(sender);
+            if (space == null) return;
+
+            space.savedVariables.reset();
+            sender.sendMessage(Component.text(Translations.get("success.cleared.variables")).color(NamedTextColor.GREEN));
+        }, new ArgumentLiteral("developers"));
     }
 
     private Space getSpace(CommandSender sender) {
