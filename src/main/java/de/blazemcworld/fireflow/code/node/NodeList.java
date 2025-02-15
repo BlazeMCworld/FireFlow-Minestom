@@ -149,6 +149,7 @@ public class NodeList {
                         .add(new SetPlayerInvulnerableNode())
                         .add(new SetPlayerSaturationNode())
                         .add(new SetPlayerVelocityNode())
+                        .add(new TakePlayerItemNode())
                         .add(new TeleportPlayerNode())
                     )
                     .add(new Category("info", Material.ENDER_PEARL)

@@ -78,7 +78,7 @@ public class ClearCommand extends Command {
 
             space.savedVariables.reset();
             sender.sendMessage(Component.text(Translations.get("success.cleared.variables")).color(NamedTextColor.GREEN));
-        }, new ArgumentLiteral("developers"));
+        }, new ArgumentLiteral("variables"));
     }
 
     private Space getSpace(CommandSender sender) {
