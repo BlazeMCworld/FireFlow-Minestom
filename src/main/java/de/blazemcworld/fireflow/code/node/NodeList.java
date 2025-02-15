@@ -1,22 +1,20 @@
 package de.blazemcworld.fireflow.code.node;
 
 import de.blazemcworld.fireflow.FireFlow;
-import de.blazemcworld.fireflow.code.node.impl.entity.TeleportEntityNode;
-import de.blazemcworld.fireflow.code.node.impl.event.CancelEventNode;
+import de.blazemcworld.fireflow.code.node.impl.condition.*;
+import de.blazemcworld.fireflow.code.node.impl.dictionary.*;
 import de.blazemcworld.fireflow.code.node.impl.entity.RemoveEntityNode;
 import de.blazemcworld.fireflow.code.node.impl.entity.SpawnEntityNode;
-import de.blazemcworld.fireflow.code.node.impl.player.effect.*;
-import de.blazemcworld.fireflow.code.node.impl.player.info.*;
-import de.blazemcworld.fireflow.code.node.impl.world.SetBlockNode;
-import de.blazemcworld.fireflow.code.node.impl.world.SetRegionNode;
-import de.blazemcworld.fireflow.code.node.impl.condition.*;
+import de.blazemcworld.fireflow.code.node.impl.entity.TeleportEntityNode;
+import de.blazemcworld.fireflow.code.node.impl.event.CancelEventNode;
 import de.blazemcworld.fireflow.code.node.impl.event.player.*;
 import de.blazemcworld.fireflow.code.node.impl.event.space.OnChunkLoadNode;
 import de.blazemcworld.fireflow.code.node.impl.flow.*;
-import de.blazemcworld.fireflow.code.node.impl.world.GetBlockNode;
 import de.blazemcworld.fireflow.code.node.impl.item.*;
 import de.blazemcworld.fireflow.code.node.impl.list.*;
 import de.blazemcworld.fireflow.code.node.impl.number.*;
+import de.blazemcworld.fireflow.code.node.impl.player.effect.*;
+import de.blazemcworld.fireflow.code.node.impl.player.info.*;
 import de.blazemcworld.fireflow.code.node.impl.position.FacingVectorNode;
 import de.blazemcworld.fireflow.code.node.impl.position.PackPositionNode;
 import de.blazemcworld.fireflow.code.node.impl.position.UnpackPositionNode;
@@ -27,6 +25,9 @@ import de.blazemcworld.fireflow.code.node.impl.text.CombineTextsNode;
 import de.blazemcworld.fireflow.code.node.impl.text.FormatToTextNode;
 import de.blazemcworld.fireflow.code.node.impl.variable.*;
 import de.blazemcworld.fireflow.code.node.impl.vector.*;
+import de.blazemcworld.fireflow.code.node.impl.world.GetBlockNode;
+import de.blazemcworld.fireflow.code.node.impl.world.SetBlockNode;
+import de.blazemcworld.fireflow.code.node.impl.world.SetRegionNode;
 import de.blazemcworld.fireflow.util.Translations;
 import net.minestom.server.item.Material;
 
@@ -47,6 +48,14 @@ public class NodeList {
                     .add(new ConditionOrNode())
                     .add(new InvertConditionNode())
                     .add(new ValuesEqualNode<>(null))
+            )
+            .add(new Category("dictionary", Material.CHISELED_BOOKSHELF)
+                    .add(new DictionaryGetNode<>(null, null))
+                    .add(new DictionaryHasNode<>(null, null))
+                    .add(new DictionaryKeysNode<>(null, null))
+                    .add(new DictionaryPutNode<>(null, null))
+                    .add(new DictionaryRemoveNode<>(null, null))
+                    .add(new DictionarySizeNode<>(null, null))
             )
             .add(new Category("entity", Material.ZOMBIE_HEAD)
                     .add(new RemoveEntityNode())
@@ -177,6 +186,7 @@ public class NodeList {
                     .add(new AddVectorsNode())
                     .add(new GetVectorComponentNode())
                     .add(new PackVectorNode())
+                    .add(new RoundVectorAxesNode())
                     .add(new SetVectorComponentNode())
                     .add(new SetVectorLengthNode())
                     .add(new UnpackVectorNode())

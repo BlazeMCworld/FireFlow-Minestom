@@ -15,6 +15,7 @@ public class AllTypes {
     public static void init() {
         all.add(AnyType.INSTANCE);
         all.add(ConditionType.INSTANCE);
+        all.add(DictionaryType.UNSPECIFIED);
         all.add(EntityType.INSTANCE);
         all.add(ItemType.INSTANCE);
         all.add(ListType.UNSPECIFIED);

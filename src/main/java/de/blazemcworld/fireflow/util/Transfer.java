@@ -11,7 +11,11 @@ public class Transfer {
         MinecraftServer.getGlobalEventHandler().call(new PlayerExitInstanceEvent(player));
         player.respawn();
         Statistics.reset(player);
-        player.setInstance(destination, Pos.ZERO);
+        if (player.getInstance() == destination) {
+            player.teleport(Pos.ZERO);
+        } else {
+            player.setInstance(destination, Pos.ZERO);
+        }
     }
 
 }
