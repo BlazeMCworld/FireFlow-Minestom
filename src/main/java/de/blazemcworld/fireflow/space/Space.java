@@ -17,8 +17,6 @@ import net.minestom.server.coordinate.BlockVec;
 import net.minestom.server.entity.Entity;
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
-import net.minestom.server.event.player.PlayerBlockBreakEvent;
-import net.minestom.server.event.player.PlayerBlockPlaceEvent;
 import net.minestom.server.event.player.PlayerSpawnEvent;
 import net.minestom.server.instance.*;
 import net.minestom.server.instance.anvil.AnvilLoader;
@@ -92,9 +90,6 @@ public class Space {
 
             event.getPlayer().setGameMode(GameMode.CREATIVE);
         });
-
-        play.eventNode().addListener(PlayerBlockPlaceEvent.class, e -> e.setCancelled(true));
-        play.eventNode().addListener(PlayerBlockBreakEvent.class, e -> e.setCancelled(true));
 
         MinecraftServer.getSchedulerManager().scheduleTask(() -> {
             if (!loaded) return TaskSchedule.stop();

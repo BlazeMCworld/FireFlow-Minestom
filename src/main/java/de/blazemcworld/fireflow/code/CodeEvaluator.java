@@ -12,13 +12,13 @@ import de.blazemcworld.fireflow.space.Space;
 import net.minestom.server.event.Event;
 import net.minestom.server.event.EventFilter;
 import net.minestom.server.event.EventNode;
+import net.minestom.server.event.player.PlayerBlockBreakEvent;
+import net.minestom.server.event.player.PlayerBlockPlaceEvent;
+import net.minestom.server.event.trait.CancellableEvent;
 import net.minestom.server.event.trait.InstanceEvent;
 import net.minestom.server.timer.Scheduler;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Set;
+import java.util.*;
 
 public class CodeEvaluator {
 
@@ -31,6 +31,7 @@ public class CodeEvaluator {
     public final Set<Node> nodes;
     public final Scheduler scheduler;
     public final LinkedList<Integer> cpuHistory = new LinkedList<>();
+    public final WeakHashMap<CancellableEvent, Boolean> cancelState = new WeakHashMap<>();
 
     public CodeEvaluator(Space space) {
         this.space = space;
@@ -48,9 +49,15 @@ public class CodeEvaluator {
 
         this.nodes = copyNodes(nodes);
 
+        events.addListener(PlayerBlockPlaceEvent.class, this::setupDefaultCancel);
+        events.addListener(PlayerBlockBreakEvent.class, this::setupDefaultCancel);
+
         for (Node node : this.nodes) {
             node.init(this);
         }
+
+        events.addListener(PlayerBlockPlaceEvent.class, this::applyDefaultCancel);
+        events.addListener(PlayerBlockBreakEvent.class, this::applyDefaultCancel);
 
         Thread t = new Thread(() -> {
             long nextTick = System.currentTimeMillis();
@@ -82,6 +89,16 @@ public class CodeEvaluator {
         t.setPriority(Thread.MIN_PRIORITY);
         t.setDaemon(true);
         t.start();
+    }
+
+    private void setupDefaultCancel(CancellableEvent e) {
+        cancelState.put(e, true);
+    }
+
+    private void applyDefaultCancel(CancellableEvent c) {
+        if (cancelState.containsKey(c)) {
+            c.setCancelled(cancelState.get(c));
+        }
     }
 
     public void stop() {

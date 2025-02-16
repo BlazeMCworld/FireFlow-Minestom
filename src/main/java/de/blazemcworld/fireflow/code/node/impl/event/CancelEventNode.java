@@ -23,11 +23,19 @@ public class CancelEventNode extends Node {
                 ctx.sendSignal(failed);
                 return;
             }
-            if (e.isCancelled() == cancels) {
-                ctx.sendSignal(failed);
-                return;
+            if (ctx.evaluator.cancelState.containsKey(e)) {
+                if (e.isCancelled() == ctx.evaluator.cancelState.get(e)) {
+                    ctx.sendSignal(failed);
+                    return;
+                }
+                ctx.evaluator.cancelState.put(e, cancels);
+            } else {
+                if (e.isCancelled() == cancels) {
+                    ctx.sendSignal(failed);
+                    return;
+                }
+                e.setCancelled(cancels);
             }
-            e.setCancelled(cancels);
             ctx.sendSignal(next);
         });
     }
