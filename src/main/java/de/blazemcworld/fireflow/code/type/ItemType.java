@@ -57,4 +57,18 @@ public class ItemType extends WireType<ItemStack> {
     protected String stringifyInternal(ItemStack value) {
         return value.material().name() + " x" + value.amount();
     }
+
+    @Override
+    public boolean canConvert(WireType<?> other) {
+        return other == StringType.INSTANCE;
+    }
+
+    @Override
+    public ItemStack convert(WireType<?> other, Object v) {
+        if (v instanceof String str) {
+            Material mat = Material.fromNamespaceId(str);
+            return ItemStack.of(mat != null ? mat : Material.AIR);
+        }
+        return ItemStack.AIR;
+    }
 }
