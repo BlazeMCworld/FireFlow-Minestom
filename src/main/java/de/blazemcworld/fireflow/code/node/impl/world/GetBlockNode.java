@@ -18,7 +18,7 @@ public class GetBlockNode extends Node {
             Vec pos = position.getValue(ctx);
             Chunk c = ctx.evaluator.space.play.getChunkAt(pos);
             if (c == null) return "";
-            return c.getBlock(pos.sub(c.toPosition())).namespace().path();
+            return c.getBlock(pos.sub(c.toPosition())).key().value();
         });
     }
 

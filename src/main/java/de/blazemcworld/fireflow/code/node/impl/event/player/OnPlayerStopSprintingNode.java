@@ -15,7 +15,7 @@ public class OnPlayerStopSprintingNode extends Node {
     private final Output<PlayerValue> player;
 
     public OnPlayerStopSprintingNode() {
-        super("on_player_stop_sprinting", Material.GOLDEN_BOOTS);
+        super("on_player_stop_sprinting", Material.LEATHER_BOOTS);
 
         signal = new Output<>("signal", SignalType.INSTANCE);
         player = new Output<>("player", PlayerType.INSTANCE);

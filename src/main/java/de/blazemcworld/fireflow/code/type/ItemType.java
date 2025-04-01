@@ -49,7 +49,7 @@ public class ItemType extends WireType<ItemStack> {
 
     @Override
     public ItemStack parseInset(String str) {
-        Material mat = Material.fromNamespaceId(str);
+        Material mat = Material.fromKey(str);
         return ItemStack.of(mat != null ? mat : Material.AIR);
     }
 
@@ -66,7 +66,7 @@ public class ItemType extends WireType<ItemStack> {
     @Override
     public ItemStack convert(WireType<?> other, Object v) {
         if (v instanceof String str) {
-            Material mat = Material.fromNamespaceId(str);
+            Material mat = Material.fromKey(str);
             return ItemStack.of(mat != null ? mat : Material.AIR);
         }
         return ItemStack.AIR;

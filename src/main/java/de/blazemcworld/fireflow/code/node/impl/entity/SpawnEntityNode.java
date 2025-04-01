@@ -24,7 +24,7 @@ public class SpawnEntityNode extends Node {
         entity.valueFromScope();
 
         signal.onSignal((ctx) -> {
-            net.minestom.server.entity.EntityType t = net.minestom.server.entity.EntityType.fromNamespaceId(type.getValue(ctx));
+            net.minestom.server.entity.EntityType t = net.minestom.server.entity.EntityType.fromKey(type.getValue(ctx));
             if (t == null) {
                 ctx.setScopeValue(entity, EntityType.INSTANCE.defaultValue());
             } else {

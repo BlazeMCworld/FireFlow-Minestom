@@ -12,9 +12,9 @@ public class Transfer {
         player.respawn();
         Statistics.reset(player);
         if (player.getInstance() == destination) {
-            player.teleport(Pos.ZERO);
+            player.teleport(Pos.ZERO).join();
         } else {
-            player.setInstance(destination, Pos.ZERO);
+            player.setInstance(destination, Pos.ZERO).join();
         }
     }
 

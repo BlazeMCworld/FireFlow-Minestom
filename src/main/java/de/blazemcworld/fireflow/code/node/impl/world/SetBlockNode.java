@@ -16,7 +16,7 @@ public class SetBlockNode extends Node {
         Input<String> block = new Input<>("block", StringType.INSTANCE);
         Output<Void> next = new Output<>("next", SignalType.INSTANCE);
         signal.onSignal((ctx) -> {
-            Block placedBlock = Block.fromNamespaceId(block.getValue(ctx));
+            Block placedBlock = Block.fromKey(block.getValue(ctx));
             if (placedBlock != null) {
                 ctx.evaluator.space.play.setBlock(position.getValue(ctx), placedBlock);
             }

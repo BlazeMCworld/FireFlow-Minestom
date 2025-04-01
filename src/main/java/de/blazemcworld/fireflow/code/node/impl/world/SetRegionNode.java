@@ -22,7 +22,7 @@ public class SetRegionNode extends Node {
         Output<Void> then = new Output<>("then", SignalType.INSTANCE);
 
         signal.onSignal((ctx) -> {
-            Block placedBlock = Block.fromNamespaceId(block.getValue(ctx));
+            Block placedBlock = Block.fromKey(block.getValue(ctx));
             if (placedBlock != null) {
                 Vec corner1Value = corner1.getValue(ctx);
                 Vec corner2Value = corner2.getValue(ctx);

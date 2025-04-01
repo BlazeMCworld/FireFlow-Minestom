@@ -2,9 +2,14 @@ package de.blazemcworld.fireflow.util;
 
 import net.minestom.server.entity.GameMode;
 import net.minestom.server.entity.Player;
+import net.minestom.server.entity.PlayerSkin;
 import net.minestom.server.entity.attribute.AttributeInstance;
 
+import java.util.WeakHashMap;
+
 public class Statistics {
+
+    public static final WeakHashMap<Player, Boolean> needsSkinReset = new WeakHashMap<>();
 
     public static void reset(Player player) {
         player.closeInventory();
@@ -22,6 +27,10 @@ public class Statistics {
         player.setFireTicks(0);
         player.setGlowing(false);
         player.setInvisible(false);
+        if (needsSkinReset.containsKey(player)) {
+            player.setSkin(PlayerSkin.fromUuid(player.getUuid().toString()));
+            needsSkinReset.remove(player);
+        }
         for (AttributeInstance attr : player.getAttributes()) {
             attr.clearModifiers();
         }

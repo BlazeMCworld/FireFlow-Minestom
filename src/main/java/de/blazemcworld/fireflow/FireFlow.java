@@ -50,6 +50,7 @@ public class FireFlow {
                 new JoinCommand(),
                 new PlayCommand(),
                 new ReloadCommand(),
+                new LocateCommand(),
                 new LobbyCommand(),
                 new FunctionCommand(),
                 new SpaceCommand(),

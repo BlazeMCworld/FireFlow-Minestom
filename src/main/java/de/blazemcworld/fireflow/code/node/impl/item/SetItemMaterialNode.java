@@ -16,7 +16,7 @@ public class SetItemMaterialNode extends Node {
         Output<ItemStack> updated = new Output<>("updated", ItemType.INSTANCE);
 
         updated.valueFrom((ctx) -> {
-            Material mat = Material.fromNamespaceId(material.getValue(ctx));
+            Material mat = Material.fromKey(material.getValue(ctx));
             if (mat == null) mat = Material.AIR;
             return item.getValue(ctx).withMaterial(mat);
         });

@@ -32,6 +32,7 @@ public class CodeEvaluator {
     public final Scheduler scheduler;
     public final LinkedList<Integer> cpuHistory = new LinkedList<>();
     public final WeakHashMap<CancellableEvent, Boolean> cancelState = new WeakHashMap<>();
+    public final Thread spaceThread;
 
     public CodeEvaluator(Space space) {
         this.space = space;
@@ -59,7 +60,7 @@ public class CodeEvaluator {
         events.addListener(PlayerBlockPlaceEvent.class, this::applyDefaultCancel);
         events.addListener(PlayerBlockBreakEvent.class, this::applyDefaultCancel);
 
-        Thread t = new Thread(() -> {
+        spaceThread = new Thread(() -> {
             long nextTick = System.currentTimeMillis();
             while (!this.isStopped()) {
                 tickStart = System.currentTimeMillis();
@@ -86,9 +87,9 @@ public class CodeEvaluator {
                 }
             }
         }, "Space-" + space.info.id);
-        t.setPriority(Thread.MIN_PRIORITY);
-        t.setDaemon(true);
-        t.start();
+        spaceThread.setPriority(Thread.MIN_PRIORITY);
+        spaceThread.setDaemon(true);
+        spaceThread.start();
     }
 
     private void setupDefaultCancel(CancellableEvent e) {

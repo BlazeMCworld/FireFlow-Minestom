@@ -43,7 +43,7 @@ public class FunctionCommand extends Command {
         }, new ArgumentLiteral("remove"), new ArgumentLiteral("output"), new ArgumentString("name"));
 
         addSyntax((sender, ctx) -> {
-            run(sender, "icon", ctx.<ItemStack>get("item").material().namespace().asString());
+            run(sender, "icon", ctx.<ItemStack>get("item").material().key().value());
         }, new ArgumentLiteral("icon"), new ArgumentItemStack("item"));
     }
 

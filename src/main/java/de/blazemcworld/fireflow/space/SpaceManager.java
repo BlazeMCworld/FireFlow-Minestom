@@ -35,7 +35,7 @@ public class SpaceManager {
             for (SpaceInfo spaceInfo : info.values()) {
                 JsonObject space = new JsonObject();
                 space.addProperty("name", spaceInfo.name);
-                space.addProperty("icon", spaceInfo.icon.namespace().asString());
+                space.addProperty("icon", spaceInfo.icon.key().value());
                 space.addProperty("owner", spaceInfo.owner.toString());
                 JsonArray developers = new JsonArray();
                 for (UUID contributor : spaceInfo.developers) {
@@ -79,7 +79,7 @@ public class SpaceManager {
                 JsonObject space = raw.getValue().getAsJsonObject();
                 SpaceInfo spaceInfo = new SpaceInfo(Integer.parseInt(raw.getKey()));
                 spaceInfo.name = space.get("name").getAsString();
-                spaceInfo.icon = Material.fromNamespaceId(space.get("icon").getAsString());
+                spaceInfo.icon = Material.fromKey(space.get("icon").getAsString());
                 if (spaceInfo.icon == null) spaceInfo.icon = Material.PAPER;
                 spaceInfo.owner = UUID.fromString(space.get("owner").getAsString());
                 spaceInfo.developers = new HashSet<>();
@@ -121,7 +121,7 @@ public class SpaceManager {
     public static List<Space> activeSpaces() {
         List<Space> out = new ArrayList<>();
         for (Space s : spaces.values()) {
-            if (!s.play.getPlayers().isEmpty()) out.add(s);
+            if (!s.play.getPlayers().isEmpty() || !s.code.getPlayers().isEmpty() || !s.build.getPlayers().isEmpty()) out.add(s);
         }
         return out;
     }

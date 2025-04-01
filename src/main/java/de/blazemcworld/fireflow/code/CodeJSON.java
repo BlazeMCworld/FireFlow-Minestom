@@ -162,7 +162,7 @@ public class CodeJSON {
         for (FunctionDefinition function : functions) {
             JsonObject obj = new JsonObject();
             obj.addProperty("name", function.name);
-            obj.addProperty("icon", function.icon.namespace().asString());
+            obj.addProperty("icon", function.icon.key().value());
             JsonArray inputs = new JsonArray();
             for (Node.Output<?> input : function.inputsNode.outputs) {
                 JsonObject inputObj = new JsonObject();
@@ -436,7 +436,7 @@ public class CodeJSON {
         for (JsonElement function : json) {
             JsonObject obj = function.getAsJsonObject();
             String name = obj.get("name").getAsString();
-            Material icon = obj.has("icon") ? Material.fromNamespaceId(obj.get("icon").getAsString()) : null;
+            Material icon = obj.has("icon") ? Material.fromKey(obj.get("icon").getAsString()) : null;
             if (icon == null) icon = Material.COMMAND_BLOCK;
             FunctionDefinition functionDefinition = new FunctionDefinition(name, icon);
 

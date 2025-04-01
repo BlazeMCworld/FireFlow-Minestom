@@ -130,7 +130,7 @@ public class WikiGenerator {
     }
 
     private static String icon(Material m) {
-        return "<img src=\"https://raw.githubusercontent.com/Owen1212055/mc-assets/refs/heads/main/assets/" + m.namespace().path().toUpperCase() + ".png\" style=\"height: 1em; transform: translateY(0.1em);\">";
+        return "<img src=\"https://raw.githubusercontent.com/Owen1212055/mc-assets/refs/heads/main/assets/" + m.key().value().toUpperCase() + ".png\" style=\"height: 1em; transform: translateY(0.1em);\">";
     }
 
     private static String colorStart(TextColor color) {

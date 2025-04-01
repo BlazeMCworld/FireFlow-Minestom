@@ -441,7 +441,7 @@ public class CodeEditor {
         FunctionDefinition function = tryGetFunction(player);
         if (function == null) return;
 
-        Material m = Material.fromNamespaceId(icon);
+        Material m = Material.fromKey(icon);
         
         if (m == null) {
             player.sendMessage(Component.text(Translations.get("error.unknown.item")).color(NamedTextColor.RED));

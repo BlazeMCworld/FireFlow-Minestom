@@ -20,7 +20,7 @@ public class SendBlockChangeNode extends Node {
         Input<PlayerValue> player = new Input<>("player", PlayerType.INSTANCE);
         Output<Void> next = new Output<>("next", SignalType.INSTANCE);
         signal.onSignal((ctx) -> {
-            Block placedBlock = Block.fromNamespaceId(block.getValue(ctx));
+            Block placedBlock = Block.fromKey(block.getValue(ctx));
             if (placedBlock != null) {
                 player.getValue(ctx).tryUse(ctx, p -> p.sendPacket(new BlockChangePacket(position.getValue(ctx), placedBlock)));
             }

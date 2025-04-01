@@ -30,7 +30,7 @@ public class ParticleType extends WireType<Particle> {
 
     @Override
     public Particle parseInset(String str) {
-        return Particle.fromNamespaceId(str);
+        return Particle.fromKey(str);
     }
 
     @Override
@@ -54,6 +54,6 @@ public class ParticleType extends WireType<Particle> {
 
     @Override
     protected String stringifyInternal(Particle value) {
-        return value.namespace().path();
+        return value.key().value();
     }
 }

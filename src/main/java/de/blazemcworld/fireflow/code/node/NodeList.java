@@ -3,9 +3,7 @@ package de.blazemcworld.fireflow.code.node;
 import de.blazemcworld.fireflow.FireFlow;
 import de.blazemcworld.fireflow.code.node.impl.condition.*;
 import de.blazemcworld.fireflow.code.node.impl.dictionary.*;
-import de.blazemcworld.fireflow.code.node.impl.entity.RemoveEntityNode;
-import de.blazemcworld.fireflow.code.node.impl.entity.SpawnEntityNode;
-import de.blazemcworld.fireflow.code.node.impl.entity.TeleportEntityNode;
+import de.blazemcworld.fireflow.code.node.impl.entity.*;
 import de.blazemcworld.fireflow.code.node.impl.event.CancelEventNode;
 import de.blazemcworld.fireflow.code.node.impl.event.player.*;
 import de.blazemcworld.fireflow.code.node.impl.event.space.OnChunkLoadNode;
@@ -59,6 +57,7 @@ public class NodeList {
                 )
                 .add(new Category("entity", Material.ZOMBIE_HEAD)
                         .add(new RemoveEntityNode())
+                        .add(new SetEntityGravityNode())
                         .add(new SpawnEntityNode())
                         .add(new TeleportEntityNode())
                 )
@@ -70,6 +69,7 @@ public class NodeList {
                         .add(new OnPlayerChatNode())
                         .add(new OnPlayerClickBlockNode())
                         .add(new OnPlayerJoinNode())
+                        .add(new OnPlayerLeaveNode())
                         .add(new OnPlayerPlaceBlockNode())
                         .add(new OnPlayerStartFlyingNode())
                         .add(new OnPlayerStartGlidingNode())
@@ -134,6 +134,7 @@ public class NodeList {
                                 .add(new GivePlayerItemNode())
                                 .add(new KillPlayerNode())
                                 .add(new PlayerAnimationNode())
+                                .add(new PlaySoundNode())
                                 .add(new RespawnPlayerNode())
                                 .add(new SendActionbarNode())
                                 .add(new SendBlockChangeNode())
@@ -151,6 +152,7 @@ public class NodeList {
                                 .add(new SetPlayerInventoryNode())
                                 .add(new SetPlayerInvulnerableNode())
                                 .add(new SetPlayerSaturationNode())
+                                .add(new SetPlayerSkinNode())
                                 .add(new SetPlayerSlotItemNode())
                                 .add(new SetPlayerVelocityNode())
                                 .add(new TakePlayerItemNode())
@@ -174,12 +176,12 @@ public class NodeList {
                                 .add(new PlayerIsFlyingNode())
                                 .add(new PlayerListNode())
                                 .add(new PlayerMainItemNode())
+                                .add(new PlayerPositionNode())
                         )
                 )
                 .add(new Category("position", Material.COMPASS)
                         .add(new FacingVectorNode())
                         .add(new PackPositionNode())
-                        .add(new PlayerPositionNode())
                         .add(new UnpackPositionNode())
                 )
                 .add(new Category("string", Material.STRING)

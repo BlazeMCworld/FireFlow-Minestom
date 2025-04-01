@@ -15,7 +15,7 @@ public class OnPlayerStartSneakingNode extends Node {
     private final Output<PlayerValue> player;
 
     public OnPlayerStartSneakingNode() {
-        super("on_player_start_sneaking", Material.LEATHER_LEGGINGS);
+        super("on_player_start_sneaking", Material.GOLDEN_LEGGINGS);
 
         signal = new Output<>("signal", SignalType.INSTANCE);
         player = new Output<>("player", PlayerType.INSTANCE);
