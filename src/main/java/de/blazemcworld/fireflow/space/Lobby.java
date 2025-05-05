@@ -24,6 +24,7 @@ import net.minestom.server.instance.IChunkLoader;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.instance.LightingChunk;
 import net.minestom.server.instance.block.Block;
+import net.minestom.server.inventory.PlayerInventory;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
 
@@ -73,7 +74,9 @@ public class Lobby {
         });
         events.addListener(PlayerSwapItemEvent.class, (event) -> event.setCancelled(true));
         events.addListener(ItemDropEvent.class, (event) -> event.setCancelled(true));
-        events.addListener(InventoryPreClickEvent.class, (event) -> event.setCancelled(true));
+        events.addListener(InventoryPreClickEvent.class, (event) -> {
+            if (event.getInventory() instanceof PlayerInventory) event.setCancelled(true);
+        });
 
         events.addListener(PlayerSpawnEvent.class, (event) -> {
             Statistics.reset(event.getPlayer());

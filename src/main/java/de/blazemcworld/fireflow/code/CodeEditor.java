@@ -120,7 +120,7 @@ public class CodeEditor {
                         return;
                     }
 
-                    input.insetValue(event.getRawMessage(), this);
+                    input.insetValue(event.getRawMessage().replaceAll("(?<!\\\\)\\(space\\)", " "), this);
                     input.update(space.code);
                     w.update(space.code);
                     return;

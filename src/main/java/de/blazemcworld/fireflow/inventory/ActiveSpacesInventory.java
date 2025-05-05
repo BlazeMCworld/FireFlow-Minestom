@@ -11,7 +11,9 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.minestom.server.entity.Player;
 import net.minestom.server.inventory.Inventory;
 import net.minestom.server.inventory.InventoryType;
+import net.minestom.server.inventory.click.Click;
 import net.minestom.server.item.ItemStack;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
 import java.util.List;
@@ -19,9 +21,18 @@ import java.util.List;
 public class ActiveSpacesInventory {
 
     public static void open(Player player) {
-        Inventory inv = new Inventory(InventoryType.CHEST_3_ROW, "Active Spaces");
-
         List<Space> spaces = SpaceManager.activeSpaces();
+
+        Inventory inv = new Inventory(InventoryType.CHEST_3_ROW, "Active Spaces") {
+            @Override
+            public boolean handleClick(@NotNull Player p, @NotNull Click click) {
+                if (p != player) return false;
+                if (click.slot() >= spaces.size()) return false;
+
+                Transfer.move(player, SpaceManager.getOrLoadSpace(spaces.get(click.slot()).info).play);
+                return true;
+            }
+        };
 
         spaces.sort(Comparator.comparingInt(s -> -s.play.getPlayers().size()));
 
@@ -35,15 +46,6 @@ public class ActiveSpacesInventory {
                     )
                     .build());
         }
-
-        inv.addInventoryCondition((p, slot, type, res) -> {
-            res.setCancel(true);
-            if (p != player) return;
-
-            if (slot < spaces.size()) {
-                Transfer.move(player, SpaceManager.getOrLoadSpace(spaces.get(slot).info).play);
-            }
-        });
 
         player.openInventory(inv);
     }

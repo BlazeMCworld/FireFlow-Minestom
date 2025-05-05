@@ -12,10 +12,10 @@ repositories {
 
 dependencies {
     // minestom
-    implementation 'net.minestom:minestom-snapshots:1_21_5-0473b41b2a'
+    implementation 'net.minestom:minestom-snapshots:1_21_5-2398778b46'
 
     // minimessage
-    implementation 'net.kyori:adventure-text-minimessage:4.18.0'
+    implementation 'net.kyori:adventure-text-minimessage:4.21.0'
 
     // logging
     implementation 'org.apache.logging.log4j:log4j-slf4j2-impl:2.24.3'

@@ -11,8 +11,10 @@ import net.kyori.adventure.text.format.TextDecoration;
 import net.minestom.server.entity.Player;
 import net.minestom.server.inventory.Inventory;
 import net.minestom.server.inventory.InventoryType;
+import net.minestom.server.inventory.click.Click;
 import net.minestom.server.item.ItemStack;
 import net.minestom.server.item.Material;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -26,9 +28,32 @@ public class MySpacesInventory {
             .build();
 
     public static void open(Player player) {
-        Inventory inv = new Inventory(InventoryType.CHEST_3_ROW, "My Spaces");
-
         List<SpaceInfo> spaces = new ArrayList<>();
+
+        Inventory inv = new Inventory(InventoryType.CHEST_3_ROW, "My Spaces") {
+            @Override
+            public boolean handleClick(@NotNull Player p, @NotNull Click click) {
+                if (p != player) return false;
+
+                if (click.slot() < spaces.size() && click.slot() >= 0) {
+                    Transfer.move(player, SpaceManager.getOrLoadSpace(spaces.get(click.slot())).play);
+                    return true;
+                }
+
+                if (click.slot() == 26 && spaces.size() < Config.store.limits().spacesPerPlayer() && SpaceManager.info.size() < Config.store.limits().totalSpaces()) {
+                    SpaceInfo info = new SpaceInfo(SpaceManager.lastId++);
+                    info.name = p.getUsername() + "'s New Space";
+                    info.icon = Material.PAPER;
+                    info.owner = p.getUuid();
+                    info.developers = new HashSet<>();
+                    info.builders = new HashSet<>();
+                    SpaceManager.info.put(info.id, info);
+                    MySpacesInventory.open(player);
+                    return true;
+                }
+                return false;
+            }
+        };
 
         for (SpaceInfo space : SpaceManager.info.values()) {
             if (space.owner.equals(player.getUuid())) {
@@ -46,28 +71,6 @@ public class MySpacesInventory {
         if (spaces.size() < Config.store.limits().spacesPerPlayer() && SpaceManager.info.size() < Config.store.limits().totalSpaces()) {
             inv.setItemStack(26, CREATE_SPACE);
         }
-
-        inv.addInventoryCondition((p, slot, type, res) -> {
-            res.setCancel(true);
-            if (p != player) return;
-
-            if (slot < spaces.size() && slot >= 0) {
-                Transfer.move(player, SpaceManager.getOrLoadSpace(spaces.get(slot)).play);
-                return;
-            }
-
-            if (slot == 26 && spaces.size() < Config.store.limits().spacesPerPlayer() && SpaceManager.info.size() < Config.store.limits().totalSpaces()) {
-                SpaceInfo info = new SpaceInfo(SpaceManager.lastId++);
-                info.name = p.getUsername() + "'s New Space";
-                info.icon = Material.PAPER;
-                info.owner = p.getUuid();
-                info.developers = new HashSet<>();
-                info.builders = new HashSet<>();
-                SpaceManager.info.put(info.id, info);
-                MySpacesInventory.open(player);
-                return;
-            }
-        });
 
         player.openInventory(inv);
     }

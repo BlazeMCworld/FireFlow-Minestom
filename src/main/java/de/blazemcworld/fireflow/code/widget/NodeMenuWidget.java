@@ -15,10 +15,7 @@ import net.minestom.server.coordinate.Vec;
 import net.minestom.server.instance.InstanceContainer;
 import net.minestom.server.item.ItemStack;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class NodeMenuWidget implements Widget {
 
@@ -170,9 +167,9 @@ public class NodeMenuWidget implements Widget {
             n.setPos(pos.add(Math.round(s.x() * 4) / 8f, Math.round(s.y() * 4) / 8f, 0));
         } else {
             if (ioOrigin.isInput()) {
-                n.setPos(ioOrigin.getPos().add(0.5 + s.x(), 0, 0));
+                n.setPos(ioOrigin.getPos().add(0.75 + s.x(), 0, 0));
             } else {
-                n.setPos(ioOrigin.getPos().sub(ioOrigin.getSize().x() + 0.5, 0, 0));
+                n.setPos(ioOrigin.getPos().sub(ioOrigin.getSize().x() + 0.75, 0, 0));
             }
 
             n.update(e.space.code);
@@ -197,6 +194,45 @@ public class NodeMenuWidget implements Widget {
                         n.update(e.space.code);
                         pair(ioOrigin, io, e);
                         break;
+                    }
+                }
+            }
+
+            for (NodeIOWidget io : n.getInputs()) {
+                if (io.input.inset != null || io.input.connected != null) continue;
+                List<NodeWidget> todo = new LinkedList<>();
+                todo.add(ioOrigin.parent);
+                Set<NodeWidget> checked = new HashSet<>();
+                checked.add(n);
+
+                connect:
+                for (int i = 0; i < 16; i++) {
+                    if (todo.isEmpty()) break;
+                    NodeWidget w = todo.removeFirst();
+                    checked.add(w);
+                    for (NodeIOWidget other : w.getOutputs()) {
+                        if (other.type() != io.type()) continue;
+                        if (AllTypes.isValue(io.type()) || other.connections.isEmpty()) {
+                            pair(io, other, e);
+                            break connect;
+                        }
+                    }
+
+                    if (checked.size() + todo.size() >= 16) continue;
+
+                    for (NodeIOWidget in : w.getIOWidgets()) {
+                        for (WireWidget c : in.connections) {
+                            for (NodeIOWidget io2 : c.getInputs()) {
+                                if (checked.contains(io2.parent)) continue;
+                                if (todo.contains(io2.parent)) continue;
+                                todo.add(io2.parent);
+                            }
+                            for (NodeIOWidget io2 : c.getOutputs()) {
+                                if (checked.contains(io2.parent)) continue;
+                                if (todo.contains(io2.parent)) continue;
+                                todo.add(io2.parent);
+                            }
+                        }
                     }
                 }
             }
@@ -226,7 +262,7 @@ public class NodeMenuWidget implements Widget {
         Vec end = input.getPos().add(-1 / 8f, -1 / 8f, 0);
 
         List<WireWidget> wires = new ArrayList<>();
-        List<Vec> path = editor.pathfinder.findPath(start.sub(0.25, 0, 0), end.add(0.25, 0, 0));
+        List<Vec> path = editor.pathfinder.findPath(start.sub(0.375, 0, 0), end.add(0.375, 0, 0));
         path.addFirst(start);
         path.add(end);
 
@@ -259,7 +295,7 @@ public class NodeMenuWidget implements Widget {
             Vec otherPos = other.getPos();
             Vec otherSize = other.getSize();
 
-            if (otherPos.y() - otherSize.y() > pos.y()) continue;
+            if (otherPos.y() - otherSize.y() - 0.25 > pos.y()) continue;
             if (otherPos.x() < pos.x() - size.x() || pos.x() < otherPos.x() - otherSize.x()) continue;
 
             relevant.add(other);
@@ -271,11 +307,11 @@ public class NodeMenuWidget implements Widget {
                 Vec otherPos = other.getPos();
                 Vec otherSize = other.getSize();
 
-                if (otherPos.y() - otherSize.y() > pos.y()) continue;
-                if (pos.y() - size.y() > otherPos.y()) continue;
+                if (otherPos.y() - otherSize.y() - 0.25 > pos.y()) continue;
+                if (pos.y() - size.y() - 0.25 > otherPos.y()) continue;
 
                 neededAdjustment = true;
-                pos = pos.withY(otherPos.y() - size.y() - 0.25);
+                pos = pos.withY(otherPos.y() - size.y() - 0.5);
             }
             if (!neededAdjustment) break;
         }
